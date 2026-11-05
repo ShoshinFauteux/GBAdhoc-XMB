@@ -1,6 +1,225 @@
-/* GBAdhoc XMB — design tokens shared by the PSP app, the desktop app and the overview.
-   Identity: deep indigo, the GBAdhoc rainbow as the one accent system, big clear art. */
+/* GBAdhoc XMB — design tokens, shared by the desktop app (this file) and the PSP app
+   (psp/theme.c holds the same values as a C table). Four themes, chosen in Settings:
+     graphite  neutral graphite, white focus, the logo's amber accent (the default)
+     slate     cool slate greys, a steel-blue accent
+     teal      the same slate, the logo's teal accent; info moves to steel blue
+     classic   the deep indigo and violet of 0.1.0-beta.1
+   The theme is <html data-theme="...">; dark and light are the window's own data-theme
+   (desktop.css), and each theme carries its light palette in the --dl-* tokens.
+   The GBAdhoc rainbow belongs to the logo and the arc loader in every theme.
+   tools/test_themes.py checks that every theme defines every token. */
 :root {
+  --r-violet: #8d7bf3;
+  --r-lime:   #8ac32a;
+  --r-pink:   #ef3f6d;
+  --r-amber:  #f4bb20;
+  --r-teal:   #1fb5b0;
+  --r-purple: #7f55d6;
+  --rainbow: linear-gradient(90deg,#8d7bf3 0 14%,#8ac32a 14% 36%,#ef3f6d 36% 50%,#f4bb20 50% 61%,#8ac32a 61% 72%,#1fb5b0 72% 85%,#7f55d6 85% 100%);
+
+  --radius: 10px;
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+}
+
+/* Graphite (the default). Neutral near-black, no blue cast. Focus is white on grey; the one
+   warm accent is the logo's amber. Warnings move to orange so they never read as the accent. */
+:root, :root[data-theme=graphite] {
+  --ink-0: #0a0a0b;   /* deepest */
+  --ink-1: #111112;
+  --ink-2: #19191b;
+  --ink-3: #232326;
+  --ink-4: #2f2f33;
+  --line: rgba(255,255,255,.09);
+  --line-2: rgba(255,255,255,.18);
+  --fg: #f1f1f0;
+  --fg-2: #c8c8c6;
+  --fg-3: #a1a19f;
+  --fg-4: #858589;
+
+
+  /* accent: the logo's amber, warm against the graphite */
+  --accent: #f5c518;
+  --accent-ink: #141004;
+  --accent-hover: #ffd43a;
+  --accent-text: #f7d45c;
+  --accent-soft: rgba(245,197,24,.14);
+  --accent-glow: rgba(245,197,24,.30);
+  --accent-edge: #ffe596;
+  --focus: #ffffff;                  /* white ring */
+  --focus-in: #0a0a0b;               /* dark gap inside it */
+  --sel: rgba(255,255,255,.10);      /* selected row / nav / chip: grey, not coloured */
+  --cross: #8fc1ee;                  /* the PSP's cross glyph is blue */
+
+  /* status: warn is orange here, so it is never mistaken for the accent */
+  --ok: var(--r-lime);   --ok-text: #b7ea5c;
+  --warn: #f2842b; --warn-text: #ffb36b; --warn-text-2: #ffd3a8; --warn-soft: rgba(242,132,43,.14); --warn-line: rgba(242,132,43,.5);
+  --bad: var(--r-pink);  --bad-text: #ff8aa8; --bad-text-2: #ffc4d3;
+  --info: var(--r-teal); --info-text: #7fe2dd; --info-text-2: #c8f3f1; --info-soft: rgba(31,181,176,.14); --info-line: rgba(31,181,176,.45);
+
+  /* surfaces */
+  --page-bg: radial-gradient(120% 90% at 50% 110%,#222224 0%,#0f0f10 55%,#060607 100%);
+  --bar-bg: rgba(14,14,15,.6);
+  --bar-bg-2: rgba(14,14,15,.8);
+  --toast-bg: rgba(14,14,15,.96);
+  --app-bg: radial-gradient(90% 70% at 100% 0,#2a2a2e 0%,#171719 42%,#0d0d0e 100%);
+  --app-glow: rgba(255,255,255,.07);
+  --panel-bg: linear-gradient(160deg,#28282c,#161618);
+  --strip-fade: #141415;
+  --empty-a: #303034;
+  --empty-b: #19191b;
+
+  /* the XMB preview: the PSP's own classic blue wave, not the app's colour */
+  --xmb-bg: #0e1a3a;
+  --xmb-wave-a: #2e63c9;
+  --xmb-wave-b: #163a8a;
+  --xmb-wave-c: #081433;
+
+  /* generated title cards (no art yet): muted steel, no violet */
+  --card-gba-hue: 216; --card-gba-sat: 28; --card-gba-light: 36; --card-other-hue: 216; --card-spread: 50;
+
+  /* desktop window, dark */
+  --d-bg: #121214; --d-bg-2: #19191b; --d-bg-3: #212124; --d-panel: #151517; --d-card: #1c1c1f;
+  /* desktop window, light */
+  --dl-bg: #f4f4f4; --dl-bg-2: #e9e9ea; --dl-bg-3: #dedfe1;
+  --dl-text: #161617; --dl-text-2: #3c3c3f; --dl-text-3: #55555a; --dl-text-4: #5f5f65;
+  --dl-line: rgba(22,22,23,.1); --dl-line-2: rgba(22,22,23,.18); --dl-hover: rgba(22,22,23,.05); --dl-sel: rgba(22,22,23,.08);
+  --dl-accent-text: #7a5e00; --dl-ok-text: #46710a; --dl-info-text: #0c6a66; --dl-bad-text: #b8123f; --dl-warn-text: #9a4a00;
+  --dl-focus: #161617;   /* the focus ring on light surfaces */
+}
+
+/* Slate. Cool slate greys with a hint of blue; one accent, steel blue. Status colours are the logo's. */
+:root[data-theme=slate] {
+  --ink-0: #0b0e13;   /* deepest */
+  --ink-1: #11151b;
+  --ink-2: #171c24;
+  --ink-3: #20262f;
+  --ink-4: #2b333e;
+  --line: rgba(255,255,255,.09);
+  --line-2: rgba(255,255,255,.17);
+  --fg: #eef1f5;
+  --fg-2: #c4cbd5;
+  --fg-3: #9aa4b2;
+  --fg-4: #7f8998;
+
+
+  /* accent: steel blue */
+  --accent: #5b94d6;
+  --accent-ink: #0b0e13;
+  --accent-hover: #74a7e0;
+  --accent-text: #9cc4ef;            /* accent as text on dark surfaces */
+  --accent-soft: rgba(91,148,214,.18);
+  --accent-glow: rgba(91,148,214,.32);
+  --accent-edge: #bcd6f3;
+  --focus: #5b94d6;                  /* selection ring / inset */
+  --focus-in: #fff;                  /* inner ring of the 2-ring focus */
+  --sel: rgba(91,148,214,.20);       /* selected row / nav / chip */
+  --cross: #8fc1ee;                  /* the PSP's cross glyph is blue */
+
+  /* status */
+  --ok: var(--r-lime);   --ok-text: #b7ea5c;
+  --warn: var(--r-amber); --warn-text: #ffd45a; --warn-text-2: #ffe3a0; --warn-soft: rgba(244,187,32,.14); --warn-line: rgba(244,187,32,.5);
+  --bad: var(--r-pink);  --bad-text: #ff8aa8; --bad-text-2: #ffc4d3;
+  --info: var(--r-teal); --info-text: #7fe2dd; --info-text-2: #c8f3f1; --info-soft: rgba(31,181,176,.14); --info-line: rgba(31,181,176,.45);
+
+  /* surfaces */
+  --page-bg: radial-gradient(120% 90% at 50% 110%,#1b2230 0%,#0d1117 55%,#07090c 100%);
+  --bar-bg: rgba(13,17,23,.6);
+  --bar-bg-2: rgba(13,17,23,.8);
+  --toast-bg: rgba(13,17,23,.96);
+  --app-bg: radial-gradient(90% 70% at 100% 0,#28313d 0%,#171c24 42%,#0f1319 100%);
+  --app-glow: rgba(91,148,214,.14);
+  --panel-bg: linear-gradient(160deg,#242c36,#161b22);
+  --strip-fade: #141a21;
+  --empty-a: #2a3340;
+  --empty-b: #171c24;
+
+  /* the XMB preview: the PSP's own classic blue wave, not the app's colour */
+  --xmb-bg: #0e1a3a;
+  --xmb-wave-a: #2e63c9;
+  --xmb-wave-b: #163a8a;
+  --xmb-wave-c: #081433;
+
+  /* generated title cards (no art yet): blue family, no violet */
+  --card-gba-hue: 214; --card-gba-sat: 48; --card-gba-light: 40; --card-other-hue: 214; --card-spread: 60;
+
+  /* desktop window, dark */
+  --d-bg: #12161c; --d-bg-2: #181d25; --d-bg-3: #1f252e; --d-panel: #141920; --d-card: #1a2028;
+  /* desktop window, light */
+  --dl-bg: #f2f4f7; --dl-bg-2: #e7eaef; --dl-bg-3: #dbe0e7;
+  --dl-text: #15181e; --dl-text-2: #3a404a; --dl-text-3: #525c6a; --dl-text-4: #5c6573;
+  --dl-line: rgba(21,24,30,.1); --dl-line-2: rgba(21,24,30,.18); --dl-hover: rgba(21,24,30,.05); --dl-sel: rgba(91,148,214,.16);
+  --dl-accent-text: #275f9e; --dl-ok-text: #46710a; --dl-info-text: #0c6a66; --dl-bad-text: #b8123f; --dl-warn-text: #7a5400;
+  --dl-focus: #275f9e;   /* the focus ring on light surfaces */
+}
+
+/* Teal (Slate + logo). The slate ground with the logo's own teal as the accent; info moves to steel blue. */
+:root[data-theme=teal] {
+  --ink-0: #0b0e13;   /* deepest */
+  --ink-1: #11151b;
+  --ink-2: #171c24;
+  --ink-3: #20262f;
+  --ink-4: #2b333e;
+  --line: rgba(255,255,255,.09);
+  --line-2: rgba(255,255,255,.17);
+  --fg: #eef1f5;
+  --fg-2: #c4cbd5;
+  --fg-3: #9aa4b2;
+  --fg-4: #7f8998;
+
+
+  /* accent: the logo's teal */
+  --accent: #1fb8b0;
+  --accent-ink: #06201e;
+  --accent-hover: #35cdc5;
+  --accent-text: #7fe2dd;
+  --accent-soft: rgba(31,184,176,.16);
+  --accent-glow: rgba(31,184,176,.32);
+  --accent-edge: #a8ece8;
+  --focus: #1fb8b0;
+  --focus-in: #fff;
+  --sel: rgba(31,184,176,.18);
+  --cross: #8fc1ee;                  /* the PSP's cross glyph is blue */
+
+  /* status: info becomes steel blue so it is not the accent */
+  --ok: var(--r-lime);   --ok-text: #b7ea5c;
+  --warn: var(--r-amber); --warn-text: #ffd45a; --warn-text-2: #ffe3a0; --warn-soft: rgba(244,187,32,.14); --warn-line: rgba(244,187,32,.5);
+  --bad: var(--r-pink);  --bad-text: #ff8aa8; --bad-text-2: #ffc4d3;
+  --info: #5b94d6; --info-text: #9cc4ef; --info-text-2: #cfe1f6; --info-soft: rgba(91,148,214,.14); --info-line: rgba(91,148,214,.45);
+
+  /* surfaces */
+  --page-bg: radial-gradient(120% 90% at 50% 110%,#1b2230 0%,#0d1117 55%,#07090c 100%);
+  --bar-bg: rgba(13,17,23,.6);
+  --bar-bg-2: rgba(13,17,23,.8);
+  --toast-bg: rgba(13,17,23,.96);
+  --app-bg: radial-gradient(90% 70% at 100% 0,#28313d 0%,#171c24 42%,#0f1319 100%);
+  --app-glow: rgba(31,184,176,.12);
+  --panel-bg: linear-gradient(160deg,#242c36,#161b22);
+  --strip-fade: #141a21;
+  --empty-a: #2a3340;
+  --empty-b: #171c24;
+
+  /* the XMB preview: the PSP's own classic blue wave, not the app's colour */
+  --xmb-bg: #0e1a3a;
+  --xmb-wave-a: #2e63c9;
+  --xmb-wave-b: #163a8a;
+  --xmb-wave-c: #081433;
+
+  /* generated title cards (no art yet): teal-blue family, no violet */
+  --card-gba-hue: 202; --card-gba-sat: 46; --card-gba-light: 38; --card-other-hue: 202; --card-spread: 50;
+
+  /* desktop window, dark */
+  --d-bg: #12161c; --d-bg-2: #181d25; --d-bg-3: #1f252e; --d-panel: #141920; --d-card: #1a2028;
+  /* desktop window, light */
+  --dl-bg: #f2f4f7; --dl-bg-2: #e7eaef; --dl-bg-3: #dbe0e7;
+  --dl-text: #15181e; --dl-text-2: #3a404a; --dl-text-3: #525c6a; --dl-text-4: #5c6573;
+  --dl-line: rgba(21,24,30,.1); --dl-line-2: rgba(21,24,30,.18); --dl-hover: rgba(21,24,30,.05); --dl-sel: rgba(31,184,176,.14);
+  --dl-accent-text: #0c6a66; --dl-ok-text: #46710a; --dl-info-text: #275f9e; --dl-bad-text: #b8123f; --dl-warn-text: #7a5400;
+  --dl-focus: #0c6a66;   /* the focus ring on light surfaces */
+}
+
+/* Classic. The deep indigo and violet of 0.1.0-beta.1. */
+:root[data-theme=classic] {
   --ink-0: #0a0c1e;   /* deepest */
   --ink-1: #10132d;
   --ink-2: #181c3f;
@@ -13,24 +232,52 @@
   --fg-3: #8e92b2;
   --fg-4: #5d6188;
 
-  /* the GBAdhoc rainbow, from the logo */
-  --r-violet: #8d7bf3;
-  --r-lime:   #8ac32a;
-  --r-pink:   #ef3f6d;
-  --r-amber:  #f4bb20;
-  --r-teal:   #1fb5b0;
-  --r-purple: #7f55d6;
-  --rainbow: linear-gradient(90deg,#8d7bf3 0 14%,#8ac32a 14% 36%,#ef3f6d 36% 50%,#f4bb20 50% 61%,#8ac32a 61% 72%,#1fb5b0 72% 85%,#7f55d6 85% 100%);
-
-  /* semantic */
-  --accent: var(--r-violet);
+  /* accent: the logo's violet */
+  --accent: #8d7bf3;
   --accent-ink: #0c0b20;
-  --ok: var(--r-lime);
-  --warn: var(--r-amber);
-  --bad: var(--r-pink);
-  --info: var(--r-teal);
+  --accent-hover: #a394ff;
+  --accent-text: #8d7bf3;
+  --accent-soft: rgba(141,123,243,.2);
+  --accent-glow: rgba(141,123,243,.25);
+  --accent-edge: #c9c0ff;
+  --focus: #8d7bf3;
+  --focus-in: #fff;
+  --sel: rgba(141,123,243,.2);
+  --cross: #a99cff;
 
-  --radius: 10px;
-  --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+  /* status: the logo's lime, amber, pink and teal */
+  --ok: var(--r-lime);   --ok-text: #b7ea5c;
+  --warn: var(--r-amber); --warn-text: #ffd45a; --warn-text-2: #ffe3a0; --warn-soft: rgba(244,187,32,.14); --warn-line: rgba(244,187,32,.5);
+  --bad: var(--r-pink);  --bad-text: #ff8aa8; --bad-text-2: #ffb3c6;
+  --info: var(--r-teal); --info-text: #7fe2dd; --info-text-2: #c8f3f1; --info-soft: rgba(31,181,176,.12); --info-line: rgba(31,181,176,.45);
+
+  /* surfaces */
+  --page-bg: radial-gradient(120% 90% at 50% 110%,#1a1550 0%,#0a0c1e 55%,#05060f 100%);
+  --bar-bg: rgba(10,12,30,.6);
+  --bar-bg-2: rgba(10,12,30,.8);
+  --toast-bg: rgba(10,12,30,.96);
+  --app-bg: radial-gradient(90% 70% at 100% 0,#262266 0%,#141740 42%,#0c0e26 100%);
+  --app-glow: rgba(141,123,243,.28);
+  --panel-bg: linear-gradient(160deg,#1f2352,#11132f);
+  --strip-fade: #11143a;
+  --empty-a: #2a2f5e;
+  --empty-b: #161936;
+
+  /* the XMB preview: violet, as in 0.1.0-beta.1 */
+  --xmb-bg: #15153a;
+  --xmb-wave-a: #4a3ab0;
+  --xmb-wave-b: #1e1a6e;
+  --xmb-wave-c: #0b0a2a;
+
+  /* generated title cards (no art yet): the violet family */
+  --card-gba-hue: 270; --card-gba-sat: 62; --card-gba-light: 44; --card-other-hue: 232; --card-spread: 110;
+
+  /* desktop window, dark */
+  --d-bg: #0f1230; --d-bg-2: #151943; --d-bg-3: #1c2152; --d-panel: #121637; --d-card: #181d4a;
+  /* desktop window, light (status and accent text darkened to WCAG AA on white) */
+  --dl-bg: #f3f3f8; --dl-bg-2: #e9e9f3; --dl-bg-3: #dedff0;
+  --dl-text: #14162e; --dl-text-2: #3b3f63; --dl-text-3: #6d7194; --dl-text-4: #a2a5c0;
+  --dl-line: rgba(20,22,46,.1); --dl-line-2: rgba(20,22,46,.18); --dl-hover: rgba(20,22,46,.05); --dl-sel: rgba(141,123,243,.14);
+  --dl-accent-text: #6a55e0; --dl-ok-text: #46710a; --dl-info-text: #0c6a66; --dl-bad-text: #b8123f; --dl-warn-text: #7a5400;
+  --dl-focus: #6a55e0;   /* the focus ring on light surfaces */
 }

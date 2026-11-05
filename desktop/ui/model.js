@@ -18,7 +18,7 @@
   const storage = { device: '', id: '', letter: '', label: 'Memory Stick', totalMB: 0, freeMB: 0, isGo: false, kind: 'ms0',
     gbadhoc: 'PSP/GAME/GBAdhoc', gbadhocVersion: '', installTitle: '', folders: [], root: '' };
   let devices = [];
-  const prefs = { preferOwn: true, region: 'USA, Europe first', heroes: true, keepArt: true, folders: [], device: '', theme: '' };
+  const prefs = { preferOwn: true, region: 'USA, Europe first', heroes: true, keepArt: true, folders: [], device: '', theme: '', palette: '' };
 
   function freeMB() { return scenario.pspDisconnected ? 0 : storage.freeMB; }
   // the launcher (~130 KB) plus a typical ICON0 and PIC1
@@ -31,8 +31,9 @@
   function titleCard(g) {
     const s = state[g.id]; const sys = g.system;
     const name = s.title || g.shortTitle || g.file; let hsh = 0; for (let i = 0; i < name.length; i++) hsh = (hsh * 31 + name.charCodeAt(i)) >>> 0;
-    const fam = { GBA: [270, 62, 44], GBC: [180, 55, 36], GB: [110, 24, 38] }[sys] || [232, 22, 38];
-    const hue = (fam[0] + (hsh % 111) - 55 + 360) % 360;
+    const cs = getComputedStyle(document.documentElement), tok = (n, d) => { const v = parseFloat(cs.getPropertyValue(n)); return isNaN(v) ? d : v; };
+    const fam = { GBA: [tok('--card-gba-hue', 270), tok('--card-gba-sat', 62), tok('--card-gba-light', 44)], GBC: [180, 55, 36], GB: [110, 24, 38] }[sys] || [tok('--card-other-hue', 232), 22, 38];
+    const spread = tok('--card-spread', 110), hue = (fam[0] + (hsh % (spread + 1)) - spread / 2 + 360) % 360;   // a spread inside the family
     const light = fam[2] + ((hsh >> 5) % 5) * 4 - 6;
     const pal = [`hsl(${hue} ${fam[1]}% ${light}%)`, `hsl(${(hue + 14) % 360} ${fam[1] + 8}% ${Math.max(10, light - 24)}%)`, `hsl(${(hue + 40) % 360} 70% 84%)`];
     const motif = hsh % 3, mx = 96 + (hsh >> 3) % 40, my = 44 + (hsh >> 7) % 30;
@@ -385,19 +386,19 @@ ${text}
   }
 
   const previewCSS = `
-.ic0{position:relative;width:144px;height:80px;overflow:hidden;border-radius:3px;background:#0a0c1e;transform-origin:0 0}
+.ic0{position:relative;width:144px;height:80px;overflow:hidden;border-radius:3px;background:var(--ink-0,#0a0c1e);transform-origin:0 0}
 .ic0.transparent{background:transparent}
 .ic0 .l{position:absolute;inset:0;background:center/contain no-repeat}
 .ic0 .l.fill{background-size:cover}
 .ic0 .l.blur{inset:-12px;background-size:cover;filter:blur(7px) saturate(1.25);opacity:.95}
 .ic0.card .l{background-size:cover}
-.ic0.empty{background:linear-gradient(135deg,#3a3f6e,#1b1e3c);border:1px solid rgba(255,255,255,.25);box-sizing:border-box}
+.ic0.empty{background:linear-gradient(135deg,var(--empty-a,#3a3f6e),var(--empty-b,#1b1e3c));border:1px solid rgba(255,255,255,.25);box-sizing:border-box}
 .ic0.empty i{position:absolute;left:50%;top:50%;width:44px;height:26px;margin:-13px 0 0 -22px;border-radius:4px;border:2px dashed rgba(255,255,255,.45)}
 .ic0.ms{background:linear-gradient(90deg,#1b3f8a,#2f6fd1);width:58px;height:80px;margin:0 43px}
-.ic0.gbadhoc{background:#0a0c1e url('assets/logo-dark@2x.png') center/72% no-repeat}
+.ic0.gbadhoc{background:var(--ink-0,#0a0c1e) url('assets/logo-dark@2x.png') center/72% no-repeat}
 .xmbp{position:relative;width:480px;height:272px;overflow:hidden;background:#000;font-family:var(--font);color:#fff;border-radius:inherit}
-.xmbp-bg{position:absolute;inset:0;background:#15153a center/cover no-repeat}
-.xmbp-wave{position:absolute;inset:0;background:linear-gradient(170deg,#4a3ab0,#1e1a6e 50%,#0b0a2a)}
+.xmbp-bg{position:absolute;inset:0;background:var(--xmb-bg,#15153a) center/cover no-repeat}
+.xmbp-wave{position:absolute;inset:0;background:linear-gradient(170deg,var(--xmb-wave-a,#4a3ab0),var(--xmb-wave-b,#1e1a6e) 50%,var(--xmb-wave-c,#0b0a2a))}
 .xmbp-wave i{position:absolute;left:-20%;right:-20%;top:46%;height:60%;background:radial-gradient(55% 45% at 50% 0,rgba(255,255,255,.28),transparent 70%);transform:rotate(-5deg)}
 .xmbp-cats{position:absolute;left:0;top:18px;height:50px;width:480px;z-index:2}
 .xmbp-cat{position:absolute;top:10px;width:22px;height:22px;margin-left:-11px;opacity:.6;filter:drop-shadow(0 1px 2px rgba(0,0,0,.8))}

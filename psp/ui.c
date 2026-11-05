@@ -431,7 +431,7 @@ static void draw_home(view *v)
    }
    /* tabs: L <  All 9  Not in XMB 7 ...  > R            1 / 9 */
    x = 12;
-   gfx_text(XF_700_10, x, 38.75f + face_baseline(XF_700_10, 12.5f), "L \xE2\x97\x80", C_FG4);
+   gfx_text(XF_700_10, x, 38.75f + face_baseline(XF_700_10, 12.5f), "L \xE2\x97\x80", C_FG_SMALL);
    x = 36.64f;
    for (i = 0; i < F_COUNT; i++)
    {
@@ -444,10 +444,10 @@ static void draw_home(view *v)
          gfx_rrect(x, 35.13f, w, 19.75f, 9.875f, 0x1FFFFFFFu);
       gfx_text(XF_700_11, x + 9, 35.13f + face_baseline(XF_700_11, 19.75f), FILTER_LABEL[i], on ? C_WHITE : C_FG3);
       gfx_text(XF_600_11, x + 9 + text_w(XF_700_11, FILTER_LABEL[i]) + 4, 35.13f + face_baseline(XF_700_11, 19.75f), num,
-               on ? C_FG2 : C_FG4);
+               on ? C_FG2 : C_FG_SMALL);
       x += w + 4;
    }
-   gfx_text(XF_700_10, x, 38.75f + face_baseline(XF_700_10, 12.5f), "\xE2\x96\xB6 R", C_FG4);
+   gfx_text(XF_700_10, x, 38.75f + face_baseline(XF_700_10, 12.5f), "\xE2\x96\xB6 R", C_FG_SMALL);
    {
       int mk = marked_count();
       if (n)
@@ -533,13 +533,13 @@ static void draw_home(view *v)
             gfx_shadow(xx, yy, w, h, 4, 0, 2 + 6 * k, 6 + 14 * k, 0, col_alpha(0x80000000u, 1 + 0.2f * k));
             if (k > 0.01f)
             {
-               gfx_rring(xx - 4, yy - 4, w + 8, h + 8, 8, 2, col_alpha(C_ACCENT, k));
-               gfx_rring(xx - 2, yy - 2, w + 4, h + 4, 6, 2, col_alpha(C_WHITE, k));
+               gfx_rring(xx - 4, yy - 4, w + 8, h + 8, 8, 2, col_alpha(C_FOCUS, k));
+               gfx_rring(xx - 2, yy - 2, w + 4, h + 4, 6, 2, col_alpha(C_FOCUS_IN, k));
             }
             kit_icon(list[i], xx, yy, w, h, 4, op);
             if (g->marked)
             {
-               gfx_rrect(xx + 4, yy + 4, 14, 14, 3, 0xFF8AC32Au);
+               gfx_rrect(xx + 4, yy + 4, 14, 14, 3, C_OK);
                gfx_text_center(XF_800_10, xx + 11, yy + 4 + 10.8f, "\xE2\x9C\x93", C_INK0);
             }
             /* status dot ON the tile's top border, not on the art */
@@ -548,8 +548,8 @@ static void draw_home(view *v)
          }
       }
       gfx_unclip();
-      gfx_hgrad(0, 194, 28, 54, 0xFF11143Au, 0x0011143Au);
-      gfx_hgrad(452, 194, 28, 54, 0x0011143Au, 0xFF11143Au);
+      gfx_hgrad(0, 194, 28, 54, g_th->strip_fade, g_th->strip_fade & 0xFFFFFFu);
+      gfx_hgrad(452, 194, 28, 54, g_th->strip_fade & 0xFFFFFFu, g_th->strip_fade);
    }
    gfx_pop();
 }
@@ -813,12 +813,12 @@ static void draw_game(view *v)
       else if (!g->m.recognised)
       {
          snprintf(cap, sizeof(cap), "No No-Intro match, so art can't be looked up. Give it a title and a picture from %s/PICTURE.", g_st.dev);
-         bg = 0x24F4BB20u; bd = 0x80F4BB20u; fg = 0xFFFFE3A0u;
+         bg = g_th->warn_soft; bd = g_th->warn_line; fg = g_th->warn_text2;
       }
       else if (g->m.hack)
       {
          snprintf(cap, sizeof(cap), "ROM hack, matched to \"%s\" (%d%%). Hero art is looked up by ROM name.", g->nointro_title, g->m.conf);
-         bg = 0x241FB5B0u; bd = 0x731FB5B0u; fg = 0xFFC8F3F1u;
+         bg = g_th->info_soft; bd = g_th->info_line; fg = g_th->info_text2;
       }
       if (cap[0])
       {
@@ -879,7 +879,7 @@ static void draw_game(view *v)
             snprintf(line, sizeof(line), "%.*s", ln2[j], r[i].v + st2[j]);
             gfx_text_ell(XF_600_12, 295 + ox, y + 3 + j * 14.39f + face_baseline(XF_600_12, 14.39f), 155, line, C_FG);
          }
-         gfx_text(XF_400_11, 456.77f + ox, y + 3 + face_baseline(XF_400_11, 13.75f), "\xE2\x80\xBA", C_FG4);
+         gfx_text(XF_400_11, 456.77f + ox, y + 3 + face_baseline(XF_400_11, 13.75f), "\xE2\x80\xBA", C_FG_SMALL);
          gfx_pop();
       }
       else
@@ -902,7 +902,7 @@ static void draw_game(view *v)
             up[j] = 0;
             gfx_text_n(XF_800_105, 235 + ox, by - 0.5f, up, -1, 0.42f, on ? C_FG2 : C_FG3);
             gfx_text_ell(r[i].muted ? XF_500_12 : XF_600_12, 295 + ox, by, 155, r[i].v, r[i].muted ? C_FG3 : C_FG);
-            gfx_text(XF_400_11, 456.77f + ox, by, "\xE2\x80\xBA", C_FG4);
+            gfx_text(XF_400_11, 456.77f + ox, by, "\xE2\x80\xBA", C_FG_SMALL);
          }
          gfx_pop();
       }
@@ -1246,14 +1246,14 @@ static void draw_pick(view *v)
       gfx_shadow(xx, yy, w, h, 6, 0, 2 + 6 * k, 8 + 16 * k, 0, 0x80000000u);
       if (k > 0.01f)
       {
-         gfx_rring(xx - 4, yy - 4, w + 8, h + 8, 10, 2, col_alpha(C_ACCENT, k));
-         gfx_rring(xx - 2, yy - 2, w + 4, h + 4, 8, 2, col_alpha(C_WHITE, k));
+         gfx_rring(xx - 4, yy - 4, w + 8, h + 8, 10, 2, col_alpha(C_FOCUS, k));
+         gfx_rring(xx - 2, yy - 2, w + 4, h + 4, 8, 2, col_alpha(C_FOCUS_IN, k));
       }
       gfx_push(0, 0, 1, c[i].below ? 0.55f : 1);
       if (c[i].kind == ART_NONE)
       {
          uint32_t lc[4];
-         kit_lin(135, w, h, 0xFF2A2F5Eu, 0xFF161936u, lc);
+         kit_lin(135, w, h, g_th->empty_a, g_th->empty_b, lc);
          gfx_rrect_lin(xx, yy, w, h, 6, lc[0], lc[1], lc[2], lc[3]);
          gfx_text_center(XF_700_11, xx + w / 2, yy + h / 2 + 4, "None", C_FG3);
       }
@@ -1415,7 +1415,7 @@ static void draw_title(view *v)
    gfx_push(dx, 0, 1, 1);
    /* field */
    gfx_rrect(12, 38, 456, 28, 7, 0x59000000u);
-   gfx_rring(12, 38, 456, 28, 7, 1.5f, v->zone ? C_ACCENT : C_LINE2);
+   gfx_rring(12, 38, 456, 28, 7, 1.5f, v->zone ? C_FOCUS : C_LINE2);
    x = 22 + gfx_text_ell(XF_700_15, 22, 38 + face_baseline(XF_700_15, 28), 380, v->text, C_FG);
    if (fmod(now_s(), 1.0) < 0.5)
       gfx_rect(x + 1, 43.5f, 2, 17, C_ACCENT);
@@ -1671,7 +1671,7 @@ static void draw_batch(view *v)
       batch_item *it = &g_task.items[i];
       uint32_t sc = it->st == BI_OK ? C_GOOD_TXT : it->st == BI_BAD ? C_BAD_TXT : it->st == BI_PEND ? C_PEND_TXT : it->st == BI_WARN ? C_LOW_TXT : C_FG3;
       if (y < 40 || y > 248) continue;
-      if (it->st == BI_PEND) gfx_rrect(12, y, 456, 22, 6, 0x248D7BF3u);
+      if (it->st == BI_PEND) gfx_rrect(12, y, 456, 22, 6, g_th->accent_soft);
       kit_icon(it->game, 20, y + 3, 29, 16, 2, 1);
       gfx_text_right(XF_700_105, 460, y + face_baseline(XF_700_105, 22), it->msg, sc);
       gfx_text_ell(XF_600_115, 57, y + face_baseline(XF_600_115, 22), 400 - text_w(XF_700_105, it->msg) - 50,
@@ -1745,17 +1745,20 @@ static const char *REGIONS[3] = { "USA, Europe first", "Europe first", "Japan fi
 static void act_about(int a)
 {
    (void)a;
-   dlg("GBAdhoc XMB 0.1.0-beta.1", NULL, "Gives each GBA, GB and GBC game its own entry in the XMB's Game column, opening straight into GBAdhoc. An entry is a ~200 KB launcher; ROMs are never copied.\n\nBox art: libretro-thumbnails \xC2\xB7 Hero art: GBAdhoc-heroart");
+   dlg("GBAdhoc XMB 0.1.0-beta.2", NULL, "Gives each GBA, GB and GBC game its own entry in the XMB's Game column, opening straight into GBAdhoc. An entry is a ~200 KB launcher; ROMs are never copied.\n\nBox art: libretro-thumbnails \xC2\xB7 Hero art: GBAdhoc-heroart");
    add_btn("OK", act_close, 0, 0);
 }
 
-typedef struct { char v[64], small[160]; int tog, st, arrow; uint32_t stc; char stt[16]; } srow;
+typedef struct { char v[64], small[160]; int tog, st, arrow, pick; uint32_t stc; char stt[16]; } srow;
+
+#define NSET 9
+#define SET_THEME 5
 
 static int settings_rows(srow *r)
 {
    char ssid[64];
    int on = jobs_online();
-   memset(r, 0, sizeof(srow) * 8);
+   memset(r, 0, sizeof(srow) * NSET);
    snprintf(r[0].v, 64, "Folders to scan");
    snprintf(r[0].small, 160, "%d folder%s \xC2\xB7 %d ROMs", 1 + g_st.nfolders, g_st.nfolders ? "s" : "", g_ngames);
    r[0].arrow = 1;
@@ -1769,27 +1772,32 @@ static int settings_rows(srow *r)
    snprintf(r[4].v, 64, "Fetch hero art");
    snprintf(r[4].small, 160, "github.com/ShoshinFauteux/GBAdhoc-heroart");
    r[4].tog = 1 + g_prefs.heroes;
-   snprintf(r[5].v, 64, "Network");
+   snprintf(r[SET_THEME].v, 64, "Theme");
+   snprintf(r[SET_THEME].small, 160, "the app's colours \xC2\xB7 left or right to change");
+   r[SET_THEME].pick = 1;
+   snprintf(r[SET_THEME].stt, 16, "%s", g_th->name);
+   snprintf(r[6].v, 64, "Network");
    jobs_net_info(ssid, sizeof(ssid));
-   if (on == 1) snprintf(r[5].small, 160, "Wi-Fi \"%s\" \xC2\xB7 connected", ssid);
-   else snprintf(r[5].small, 160, "%s", on < 0 ? "connecting\xE2\x80\xA6" : "not connected");
-   r[5].st = 1;
-   snprintf(r[5].stt, 16, "%s", on == 1 ? "Online" : on < 0 ? "Connecting" : "Offline");
-   r[5].stc = on == 1 ? C_GOOD_TXT : on < 0 ? C_LOW_TXT : C_BAD_TXT;
-   snprintf(r[6].v, 64, "GBAdhoc");
-   if (g_st.found) snprintf(r[6].small, 160, "%s%s%s", g_st.version, g_st.version[0] ? " \xC2\xB7 " : "", g_st.install);
-   else snprintf(r[6].small, 160, "not found on the %s", g_st.label);
-   snprintf(r[7].v, 64, "About GBAdhoc XMB");
-   snprintf(r[7].small, 160, "version 0.1.0-beta.1");
-   return 8;
+   if (on == 1) snprintf(r[6].small, 160, "Wi-Fi \"%s\" \xC2\xB7 connected", ssid);
+   else snprintf(r[6].small, 160, "%s", on < 0 ? "connecting\xE2\x80\xA6" : "not connected");
+   r[6].st = 1;
+   snprintf(r[6].stt, 16, "%s", on == 1 ? "Online" : on < 0 ? "Connecting" : "Offline");
+   r[6].stc = on == 1 ? C_GOOD_TXT : on < 0 ? C_LOW_TXT : C_BAD_TXT;
+   snprintf(r[7].v, 64, "GBAdhoc");
+   if (g_st.found) snprintf(r[7].small, 160, "%s%s%s", g_st.version, g_st.version[0] ? " \xC2\xB7 " : "", g_st.install);
+   else snprintf(r[7].small, 160, "not found on the %s", g_st.label);
+   snprintf(r[8].v, 64, "About GBAdhoc XMB");
+   snprintf(r[8].small, 160, "version 0.1.0-beta.2");
+   return NSET;
 }
 
 static void draw_list_rows_settings(view *v)
 {
-   srow r[8];
+   srow r[NSET];
    int n = settings_rows(r), i, first = 0;
    float y, dx = view_dx(v);
-   if (v->sel > 7) first = v->sel - 7;
+   /* 7 rows fit above the hint bar (58..247) */
+   if (v->sel > 6) first = v->sel - 6;
    gfx_push(dx, 0, 1, 1);
    gfx_text(XF_800_13, 12, 38 + face_baseline(XF_800_13, 16.25f), "Settings", C_FG);
    gfx_clip(0, 58, 480, 190);
@@ -1800,10 +1808,22 @@ static void draw_list_rows_settings(view *v)
       float x = 19 + (on ? 2 : 0), by = y + face_baseline(XF_600_12, 24);
       kit_row_bg(12 + (on ? 2 : 0), y, 456, 24, on);
       x += gfx_text(XF_600_12, x, by, r[i].v, C_FG) + 6;
-      gfx_text_ell(XF_500_105, x, by - 0.5f, (r[i].tog || r[i].st ? 420 : 445) - x, r[i].small, C_FG3);
+      gfx_text_ell(XF_500_105, x, by - 0.5f, (r[i].tog || r[i].st ? 420 : r[i].pick ? 372 : 445) - x, r[i].small, C_FG3);
       if (r[i].tog) kit_toggle(435 + (on ? 2 : 0), y + 5, r[i].tog == 2);
+      else if (r[i].pick)
+      {
+         /* < Graphite >: the theme's accent as a swatch, its name, the arrows */
+         float rx = 461 + (on ? 2 : 0), nw = text_w(XF_700_11, r[i].stt);
+         gfx_text_right(XF_700_10, rx, by - 0.5f, "\xE2\x96\xB6", on ? C_FG2 : C_FG_SMALL);
+         rx -= text_w(XF_700_10, "\xE2\x96\xB6") + 5;
+         gfx_text_right(XF_700_11, rx, by - 0.5f, r[i].stt, C_FG);
+         rx -= nw + 6;
+         gfx_rrect(rx - 10, y + 7, 10, 10, 3, C_ACCENT);
+         rx -= 10 + 5;
+         gfx_text_right(XF_700_10, rx, by - 0.5f, "\xE2\x97\x80", on ? C_FG2 : C_FG_SMALL);
+      }
       else if (r[i].st) gfx_text_right(XF_700_11, 461 + (on ? 2 : 0), by - 0.5f, r[i].stt, r[i].stc);
-      else if (r[i].arrow) gfx_text(XF_400_11, 458.77f + (on ? 2 : 0), by, "\xE2\x80\xBA", C_FG4);
+      else if (r[i].arrow) gfx_text(XF_400_11, 458.77f + (on ? 2 : 0), by, "\xE2\x80\xBA", C_FG_SMALL);
    }
    gfx_unclip();
    gfx_pop();
@@ -1812,8 +1832,14 @@ static void draw_list_rows_settings(view *v)
 static void key_settings(view *v, int k)
 {
    if (k == K_UP && v->sel > 0) v->sel--;
-   else if (k == K_DOWN && v->sel < 7) v->sel++;
+   else if (k == K_DOWN && v->sel < NSET - 1) v->sel++;
    else if (k == K_CIRCLE || k == K_START) pop();
+   else if (v->sel == SET_THEME && (k == K_LEFT || k == K_RIGHT))
+   {
+      g_prefs.theme = (g_prefs.theme + (k == K_LEFT ? TH_COUNT - 1 : 1)) % TH_COUNT;
+      kit_theme(g_prefs.theme);
+      prefs_save();
+   }
    else if (k == K_CROSS)
    {
       switch (v->sel)
@@ -1823,7 +1849,12 @@ static void key_settings(view *v, int k)
       case 2: g_prefs.prefer_own = !g_prefs.prefer_own; prefs_save(); break;
       case 3: g_prefs.region = (g_prefs.region + 1) % 3; prefs_save(); break;
       case 4: g_prefs.heroes = !g_prefs.heroes; prefs_save(); break;
-      case 5:
+      case SET_THEME:
+         g_prefs.theme = (g_prefs.theme + 1) % TH_COUNT;
+         kit_theme(g_prefs.theme);
+         prefs_save();
+         break;
+      case 6:
          if (jobs_online() == 1)
          {
             char s[64], m[100];
@@ -1834,8 +1865,8 @@ static void key_settings(view *v, int k)
          else
             ui_netconf_open();
          break;
-      case 6: toast(g_st.found ? "Entries launch this GBAdhoc; updating it updates every entry" : "Install GBAdhoc in PSP/GAME/GBAdhoc first", g_st.found ? TOAST_OK : TOAST_WARN); break;
-      case 7: act_about(0); break;
+      case 7: toast(g_st.found ? "Entries launch this GBAdhoc; updating it updates every entry" : "Install GBAdhoc in PSP/GAME/GBAdhoc first", g_st.found ? TOAST_OK : TOAST_WARN); break;
+      case 8: act_about(0); break;
       }
    }
 }

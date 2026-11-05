@@ -16,7 +16,7 @@ static gtex g_ground;      /* .app background, 480x272 */
 static gtex g_wave;        /* the XMB's own wave (no PIC1) */
 static uint32_t *g_ground_px;
 static gtex g_art[XART_COUNT];
-static uint32_t g_ground_override, g_panel_mid = 0xFF181B40u;
+static uint32_t g_ground_override, g_panel_mid;
 
 /* ---- colour maths for the precomputed grounds ---- */
 
@@ -69,12 +69,12 @@ static void make_ground(void)
    /* radial-gradient(90% 70% at 100% 0,#262266 0%,#141740 42%,#0c0e26 100%)
     * + ::before: a 300 px circle at (420,30), rgba(141,123,243,.28) fading
     * to transparent at 62% of its farthest-corner radius */
-   rgbaf c[3] = { hexc(0x262266, 1), hexc(0x141740, 1), hexc(0x0c0e26, 1) };
+   rgbaf c[3] = { hexc(g_th->app_bg[0], 1), hexc(g_th->app_bg[1], 1), hexc(g_th->app_bg[2], 1) };
    float at[3] = { 0, 0.42f, 1 };
-   rgbaf v[2] = { hexc(0x8d7bf3, 0.28f), hexc(0x8d7bf3, 0) };
+   rgbaf v[2] = { hexc(g_th->glow_rgb, g_th->glow_a), hexc(g_th->glow_rgb, 0) };
    float vat[2] = { 0, 0.62f };
    int x, y;
-   gtex_alloc(&g_ground, SCR_W, SCR_H);
+   if (!g_ground.px) gtex_alloc(&g_ground, SCR_W, SCR_H);
    g_ground_px = (uint32_t *)g_ground.px;
    for (y = 0; y < SCR_H; y++)
       for (x = 0; x < SCR_W; x++)
@@ -105,13 +105,13 @@ static void make_wave(void)
    /* linear-gradient(170deg,#4a3ab0,#1e1a6e 50%,#0b0a2a), and the crest:
     * a 672 x 163 box at (-96, 125) rotated -5deg, radial-gradient(55% 45% at
     * 50% 0, rgba(255,255,255,.28), transparent 70%) */
-   rgbaf c[3] = { hexc(0x4a3ab0, 1), hexc(0x1e1a6e, 1), hexc(0x0b0a2a, 1) };
+   rgbaf c[3] = { hexc(g_th->xmb_wave[0], 1), hexc(g_th->xmb_wave[1], 1), hexc(g_th->xmb_wave[2], 1) };
    float at[3] = { 0, 0.5f, 1 };
    float dx = sinf(170 * 3.14159265f / 180), dy = -cosf(170 * 3.14159265f / 180);
    float len = fabsf(480 * dx) + fabsf(272 * dy);
    float ca = cosf(5 * 3.14159265f / 180), sa = sinf(5 * 3.14159265f / 180);
    int x, y;
-   gtex_alloc(&g_wave, SCR_W, SCR_H);
+   if (!g_wave.px) gtex_alloc(&g_wave, SCR_W, SCR_H);
    for (y = 0; y < SCR_H; y++)
       for (x = 0; x < SCR_W; x++)
       {
@@ -135,11 +135,32 @@ static void make_wave(void)
    gtex_flush(&g_wave);
 }
 
+static uint32_t panel_mid(void)
+{
+   uint32_t c[4];
+   kit_lin(160, 456, 200, g_th->panel_a, g_th->panel_b, c);
+   return col_mix(c[0], c[3], 0.5f);
+}
+
+void kit_theme(int i)
+{
+   int g;
+   theme_set(i);
+   make_ground();
+   make_wave();
+   g_panel_mid = panel_mid();
+   /* the title cards are drawn in the theme's colours: make them again */
+   for (g = 0; g < g_ngames; g++)
+      if (g_games[g].icon.kind == ART_NONE)
+         g_games[g].icon_img.ver = -1;
+}
+
 void kit_init(void)
 {
    int i;
    make_ground();
    make_wave();
+   g_panel_mid = panel_mid();
    for (i = 0; i < XART_COUNT; i++)
    {
       gtex *t = &g_art[i];
@@ -225,14 +246,14 @@ void kit_top(const char *dim, const char *bold)
    }
 }
 
-static const uint32_t GLYPH_COL[4] = { 0xFFA99CFFu, 0xFFFF7D9Fu, 0xFFA6DF4Au, 0xFFFF9AB3u };
+static const uint32_t GLYPH_COL[4] = { 0, 0xFFFF7D9Fu, 0xFFA6DF4Au, 0xFFFF9AB3u };   /* [0]: the theme's cross */
 
 float kit_glyph(int g, float x, float cy, uint32_t col)
 {
    if (g <= HG_SQ)
    {
       static const char *sym[4] = { "\xE2\x9C\x95", "\xE2\x97\x8B", "\xE2\x96\xB3", "\xE2\x96\xA1" };
-      uint32_t c = col ? col : GLYPH_COL[g];
+      uint32_t c = col ? col : g == HG_CROSS ? g_th->cross : GLYPH_COL[g];
       const xf_face *f = face_get(XF_800_10);
       float w = text_w(XF_800_10, sym[g]);
       gfx_ring(x + 7.5f, cy, 7.5f, 1.5f, c);
@@ -276,7 +297,7 @@ void kit_toast(const char *msg, uint32_t dot, float t)
 {
    float k = ease_out(clampf(t / 0.22f, 0, 1));
    float y = 248 + (1 - k) * 24;
-   gfx_rect(0, y, SCR_W, 24, 0xF50A0C1Eu);
+   gfx_rect(0, y, SCR_W, 24, g_th->toast);
    gfx_rect(0, y, SCR_W, 1, 0x0FFFFFFFu);
    gfx_circle(11.5f, y + 11.5f, 3.5f, dot);
    gfx_text_ell(XF_600_115, 20, y + face_baseline(XF_600_115, 24), SCR_W - 32, msg, C_FG);
@@ -301,8 +322,8 @@ void kit_row_bg(float x, float y, float w, float h, int on)
 {
    if (!on)
       return;
-   gfx_rrect(x, y, w, h, 6, 0x388D7BF3u);
-   gfx_rring(x, y, w, h, 6, 1.5f, C_ACCENT);
+   gfx_rrect(x, y, w, h, 6, g_th->sel);
+   gfx_rring(x, y, w, h, 6, 1.5f, C_FOCUS);
 }
 
 void kit_toggle(float x, float y, int on)
@@ -363,6 +384,7 @@ void kit_step_icon(float x, float y, int st)
 void kit_scrim(float a)
 {
    gfx_rect(0, 0, SCR_W, SCR_H, col_alpha(0x9E05060Fu, a));
+   if (a > 0.5f) gfx_text_cover(0, 0, SCR_W, SCR_H);
 }
 
 void kit_panel(float x, float y, float w, float h, float pop)
@@ -375,8 +397,9 @@ void kit_panel(float x, float y, float w, float h, float pop)
    gfx_shadow(0, 0, w, h, 11, 0, 0, 0, 1, 0x24FFFFFFu);
    {
       uint32_t c[4];
-      kit_lin(160, w, h, 0xFF1F2352u, 0xFF11132Fu, c);
+      kit_lin(160, w, h, g_th->panel_a, g_th->panel_b, c);
       gfx_rrect_lin(0, 0, w, h, 11, c[0], c[1], c[2], c[3]);
+      gfx_text_cover(0, 0, w, h);
       /* the 2 px accent line along the rounded top: the top 2 rows of an
        * accent rounded rect */
       gfx_clip(0, 0, w, 2);
@@ -423,7 +446,7 @@ float kit_button(float x, float y, const char *label, int on, int danger)
    if (on)
    {
       gfx_rrect(x, y, w, 26, 7, danger ? C_BAD : C_ACCENT);
-      gfx_rring(x, y, w, 26, 7, 1.5f, danger ? 0xFFFFB3C6u : 0xFFC9C0FFu);
+      gfx_rring(x, y, w, 26, 7, 1.5f, danger ? 0xFFFFB3C6u : g_th->accent_edge);
       kit_glyph(HG_CROSS, x + 11.5f, y + 13, danger ? C_WHITE : C_ACCENT_INK);
       gfx_text(XF_700_115, x + 11.5f + 21, y + face_baseline(XF_700_115, 26), label, danger ? C_WHITE : C_ACCENT_INK);
    }
@@ -572,7 +595,7 @@ void kit_xmb(int gi, float x, float y, float s, int flags, float t, float shift,
    /* background: PIC1 or the XMB's wave */
    if (!(flags & XP_NOBG) && g->bg.kind != ART_NONE)
    {
-      gfx_rect(0, 0, SCR_W, SCR_H, 0xFF15153Au);
+      gfx_rect(0, 0, SCR_W, SCR_H, g_th->xmb_bg);
       if (pic && pic->px)
       {
          gtex pt;

@@ -28,7 +28,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define XMB_VERSION "0.1.0-beta.1"
+#define XMB_VERSION "0.1.0-beta.2"
 #define HOST L"https://xmb.gbadhoc/"
 
 typedef struct
@@ -924,7 +924,7 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE prev, PWSTR cmdline, int show)
    wc.hIcon = LoadIconW(hi, MAKEINTRESOURCEW(1));
    wc.hIconSm = LoadIconW(hi, MAKEINTRESOURCEW(1));
    wc.hCursor = LoadCursorW(NULL, (LPCWSTR)IDC_ARROW);
-   wc.hbrBackground = CreateSolidBrush(RGB(0x0f, 0x12, 0x30));
+   wc.hbrBackground = CreateSolidBrush(RGB(0x12, 0x12, 0x14));
    wc.lpszClassName = L"GBAdhocXMB";
    RegisterClassExW(&wc);
 

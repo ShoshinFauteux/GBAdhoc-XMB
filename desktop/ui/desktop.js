@@ -245,7 +245,7 @@
     const res = await X.fetchArt(g, (st) => { const last = live[live.length - 1]; if (last && last.pending && (last.src === st.src || !st.pending)) live.pop(); live.push(st); d.set(stepsHTML(live, true)); });
     X.applyFetch(g, res);
     d.title(res.status === 'ok' ? 'Art found' : res.status === 'offline' ? 'Offline' : res.status === 'rate' ? 'Rate-limited by GitHub' : 'No art found');
-    d.set(stepsHTML(res.steps.filter(st => !st.pending), false) + (res.box.length ? `<div class="thumbs">${res.box.map(c => `<div style="background-image:url('${c.src}');opacity:${c.below ? .5 : 1}"><span style="color:${c.below ? '#ff8aa8' : '#b7ea5c'}">${c.conf}%</span></div>`).join('')}</div>` : '') + (res.status === 'ok' ? '<p style="margin:10px 0 0">The best match is now the box art and the hero art the background. Change either from the panel.</p>' : ''));
+    d.set(stepsHTML(res.steps.filter(st => !st.pending), false) + (res.box.length ? `<div class="thumbs">${res.box.map(c => `<div style="background-image:url('${c.src}');opacity:${c.below ? .5 : 1}"><span style="color:${c.below ? 'var(--chip-bad)' : 'var(--chip-ok)'}">${c.conf}%</span></div>`).join('')}</div>` : '') + (res.status === 'ok' ? '<p style="margin:10px 0 0">The best match is now the box art and the hero art the background. Change either from the panel.</p>' : ''));
     d.setButtons([{ label: res.status === 'rate' ? 'Finish the rest later' : 'Close', cls: 'primary', action: () => render() }]);
     render();
   }
@@ -378,6 +378,8 @@
     m.innerHTML = `<div class="tools"><h1>Settings</h1></div><div class="page">
       <div class="sec"><h3>Folders to scan on ${esc(X.where())}</h3>${folders.map((f, i) => `<div class="srow"><div class="t"><b>${esc(f)}</b><small>${countIn(f)} ROMs</small></div>${i === 0 ? '<span class="pill ok">GBAdhoc</span>' : `<button class="b sm" data-rm="${esc(f)}">Remove</button>`}</div>`).join('')}
         <div class="srow"><div class="t"><b>Add a folder</b><small class="p">ROMs outside GBAdhoc's roms folder get an absolute ${esc(X.storage.kind)}: path in launch.ini</small></div><select class="sel" id="addf" ${options.length ? '' : 'disabled'}>${options.length ? options.map(f => `<option>${esc(f)}</option>`).join('') : '<option>No other folders</option>'}</select><button class="b sm" id="addb" ${options.length ? '' : 'disabled'}>Add</button><button class="b sm" id="rescan" ${connected() ? '' : 'disabled'}>Rescan</button></div></div>
+      <div class="sec"><h3>Appearance</h3>
+        <div class="srow"><div class="t"><b>Theme</b><small class="p">The colours of this app. Dark and light are at the foot of the side bar. New title cards are drawn in the theme's colours</small></div><span class="theme tpick" id="palette" role="radiogroup" aria-label="Theme">${PALETTES.map(([k, n]) => `<button role="radio" aria-checked="${document.documentElement.dataset.theme === k}" class="${document.documentElement.dataset.theme === k ? 'on' : ''}" data-p="${k}"><i></i>${n}</button>`).join('')}</span></div></div>
       <div class="sec"><h3>Art</h3>
         <div class="srow"><div class="t"><b>Prefer GBAdhoc's own art</b><small class="p">Use the boxart and hero folders before asking the internet</small></div><span class="tog ${prefs.preferOwn ? 'on' : ''}" data-p="preferOwn"></span></div>
         <div class="srow"><div class="t"><b>Box art region</b><small class="p">Which No-Intro region wins when several match</small></div><select class="sel" id="region">${['USA, Europe first', 'Europe first', 'Japan first'].map(r => `<option ${prefs.region === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
@@ -388,7 +390,8 @@
         <div class="srow"><div class="t"><b>GBAdhoc</b><small>${connected() ? esc(X.where()) + '/' + esc(X.storage.gbadhoc) + (X.storage.installTitle ? ' · ' + esc(X.storage.installTitle) : '') : 'No PSP connected'}</small></div><span class="pill ${connected() && !X.scenario.noInstall ? 'ok' : 'bad'}">${connected() ? (X.scenario.noInstall ? 'Not found' : 'Found') : 'No PSP'}</span></div>
         <div class="srow"><div class="t"><b>Launcher</b><small class="p">Every entry gets the same 130 KB launcher; updating GBAdhoc updates every entry</small></div><span class="pill">1.0 · built in</span></div>
         <div class="srow"><div class="t"><b>Written straight through to the stick</b><small class="p">Every file is flushed as it is written and checked after, and an entry only appears in PSP/GAME once it is whole, so pulling the cable never leaves half an entry</small></div><span class="pill ok">Always</span></div></div>
-      <div class="sec"><h3>About</h3><div class="srow"><div class="t"><b>GBAdhoc XMB ${esc(hello ? hello.version : '0.1.0-beta.1')}</b><small class="p">A sibling of GBAdhoc. Box art: libretro-thumbnails (Named_Boxarts). Hero art: GBAdhoc-heroart. No-Intro names: libretro-database. WebView2 ${esc(hello ? hello.runtime : '')}.</small></div></div></div></div>`;
+      <div class="sec"><h3>About</h3><div class="srow"><div class="t"><b>GBAdhoc XMB ${esc(hello ? hello.version : '0.1.0-beta.2')}</b><small class="p">A sibling of GBAdhoc. Box art: libretro-thumbnails (Named_Boxarts). Hero art: GBAdhoc-heroart. No-Intro names: libretro-database. WebView2 ${esc(hello ? hello.runtime : '')}.</small></div></div></div></div>`;
+    m.querySelectorAll('#palette button').forEach(b => b.addEventListener('click', () => { setPalette(b.dataset.p); prefs.palette = b.dataset.p; X.savePrefs(); render(); }));
     m.querySelectorAll('.tog[data-p]').forEach(t => t.addEventListener('click', () => { prefs[t.dataset.p] = !prefs[t.dataset.p]; X.savePrefs(); render(); }));
     m.querySelector('#region').addEventListener('change', e => { prefs.region = e.target.value; X.savePrefs(); });
     m.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => { prefs.folders = prefs.folders.filter(f => f !== b.dataset.rm); X.savePrefs(); toast('Folder removed; rescan to update the library', 'ok'); render(); }));
@@ -454,6 +457,12 @@
   });
 
   // ---------- chrome wiring ----------
+  // the colour theme (brand.css: <html data-theme>); dark/light is the window's own data-theme
+  const PALETTES = [['graphite', 'Graphite'], ['slate', 'Slate'], ['teal', 'Teal'], ['classic', 'Classic']];
+  function setPalette(p) {
+    if (!PALETTES.some(x => x[0] === p)) p = 'graphite';
+    document.documentElement.dataset.theme = p;
+  }
   function setTheme(t) {
     win.dataset.theme = t; $('theme').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.t === t));
     document.body.classList.toggle('light', t === 'light');
@@ -473,6 +482,7 @@
     if (!Array.isArray(prefs.folders)) prefs.folders = [];
     if (st.queue && st.queue.ids && st.queue.ids.length) { queueState = st.queue; queueState.paused = true; }
     $('ver').textContent = 'GBAdhoc XMB ' + hello.version;
+    setPalette(prefs.palette);
     setTheme(prefs.theme || (hello.dark ? 'dark' : 'light'));
     X.netStatus().then(n => { netInfo = n; render(); });
     await scan();
@@ -482,6 +492,8 @@
 
   // demo deep links (screenshots and tests): ?demo=insp:<title words> | picker:.. | make:.. | queue | settings | art | light
   function runDemo() {
+    const th = /[?&]theme=([a-z]+)/.exec(location.search);
+    if (th) setPalette(th[1]);
     const demo = /[?&]demo=([a-z]+)(?::([^&]+))?/.exec(location.search);
     if (!demo) return;
     const want = decodeURIComponent(demo[2] || '').toLowerCase();
@@ -500,6 +512,6 @@
     if (demo[1] === 'queue') runQueue(X.games.filter(x => x.recognised && !x.entry && !x.orphan), 'make', 0, false);
   }
 
-  window.DESK = { ui, render, scan, runQueue, resumeQueue, makeFlow, fetchFlow, pickerSheet, get running() { return running; }, get queueState() { return queueState; } };
+  window.DESK = { ui, render, setPalette, PALETTES, scan, runQueue, resumeQueue, makeFlow, fetchFlow, pickerSheet, get running() { return running; }, get queueState() { return queueState; } };
   start().catch(e => { ui.scanning = false; toast(e.message, 'bad'); render(); });
 })();

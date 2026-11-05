@@ -9,13 +9,13 @@
 # <fixture ms dir> comes from tools/make_fixture.py (the card's root).  With
 # `keep`, the sandbox card of the previous run is reused (entries made stay),
 # so a later run sees "In XMB" and "ROM moved" for real.  `offline` turns
-# PPSSPP's WLAN off.  The sandbox is $HOME/xmbapp-e2e/app.
+# PPSSPP's WLAN off.  The sandbox is $XMB_SANDBOX, default $HOME/xmbapp-e2e/app.
 # Only the processes started here are stopped.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 APP="$(cd "$HERE/.." && pwd)"
 FIX="$1"; OUT="$2"; SCRIPT="$3"; KEEP="${4:-}"; OFFLINE="${5:-}"
-SB="$HOME/xmbapp-e2e/app"
+SB="${XMB_SANDBOX:-$HOME/xmbapp-e2e/app}"
 MS="$SB/ppsspp"
 GAME="$MS/PSP/GAME/GBAdhocXMB"
 PPSSPP="${PPSSPP:-$HOME/ppsspp/build/PPSSPPSDL}"
@@ -61,6 +61,7 @@ PGID=$(ps -o pgid= -p $PID 2>/dev/null | tr -d ' ')
 [ -n "$PGID" ] && kill -- -"$PGID" 2>/dev/null
 wait $PID 2>/dev/null
 cp "$GAME/log/xmbapp.log" "$OUT/" 2>/dev/null
+cp "$GAME"/log/*.txt "$OUT/" 2>/dev/null   # the text on each shot (contrast/overlap check)
 for b in "$GAME"/log/*.bmp; do
   [ -f "$b" ] || continue
   python3 -c "import sys; from PIL import Image; Image.open(sys.argv[1]).save(sys.argv[2])" "$b" "$OUT/$(basename "${b%.bmp}").png" 2>/dev/null || cp "$b" "$OUT/"

@@ -24,6 +24,7 @@
 #include "gfx.h"
 #include "jobs.h"
 #include "model.h"
+#include "theme.h"
 #include "net.h"
 #include "ui.h"
 #include "util.h"
@@ -293,11 +294,13 @@ int main(int argc, char **argv)
       if (ini_get((char *)buf, "script", g_script, sizeof(g_script)) == 0)
       {
          g_tok = g_script;
+         gfx_text_log(1);    /* each shot also gets <name>.txt: the text on it */
          LOG("harness script: %s", g_script);
       }
       free(buf);
    }
    prefs_load();
+   theme_set(g_prefs.theme);
    sceCtrlSetSamplingCycle(0);
    sceCtrlSetSamplingMode(PSP_CTRL_MODE_ANALOG);
    gfx_init();
@@ -315,7 +318,7 @@ int main(int argc, char **argv)
          if (jobs_online() != 1)
             ui_toast_ext("Still offline. Art can be fetched later; entries can be made with the art on the card.", 1);
       }
-      gfx_frame_begin(0xFF0C0E26u);
+      gfx_frame_begin(g_th->app_bg[2]);
       ui_draw();
       if (g_nc_running)
       {
@@ -330,6 +333,25 @@ int main(int argc, char **argv)
          char p[PATHCAP];
          snprintf(p, sizeof(p), "%s/log/%s.bmp", g_st.app_dir, g_shot);
          bmp_write(p);
+         {
+            /* and the text on it: x0 y0 x1 y1 colour px text */
+            const gfx_trec *r;
+            int nr = gfx_text_records(&r), i;
+            SceUID fd;
+            snprintf(p, sizeof(p), "%s/log/%s.txt", g_st.app_dir, g_shot);
+            fd = sceIoOpen(p, PSP_O_WRONLY | PSP_O_CREAT | PSP_O_TRUNC, 0777);
+            if (fd >= 0)
+            {
+               for (i = 0; i < nr; i++)
+               {
+                  char ln[120];
+                  int k = snprintf(ln, sizeof(ln), "%d %d %d %d %08X %.2f %s\n", r[i].x0, r[i].y0, r[i].x1, r[i].y1,
+                                   (unsigned)r[i].c, r[i].px, r[i].s);
+                  sceIoWrite(fd, ln, (SceSize)k);
+               }
+               sceIoClose(fd);
+            }
+         }
          LOG("shot %s", g_shot);
          g_shot[0] = 0;
       }

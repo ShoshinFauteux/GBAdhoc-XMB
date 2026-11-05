@@ -9,7 +9,7 @@
 # -lpspnet_inet -lpspnet_resolver) nor build.mak's tail (-lpspnet
 # -lpspnet_apctl) already links (memory: psp-stub-order-trap).
 TARGET = xmbapp
-OBJS   = main.o gfx.o ui.o ui_kit.o jobs.o model.o names.o art.o util.o net.o xw_core_psp.o
+OBJS   = main.o gfx.o theme.o ui.o ui_kit.o jobs.o model.o names.o art.o util.o net.o xw_core_psp.o
 CFLAGS = -O2 -G0 -MMD -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation -Wno-missing-field-initializers
 ASFLAGS = $(CFLAGS)
 LDFLAGS = -Wl,-Map,xmbapp.map

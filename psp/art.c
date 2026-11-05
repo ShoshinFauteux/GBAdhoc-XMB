@@ -1,5 +1,6 @@
 /* art.c -- see art.h. */
 #include "art.h"
+#include "theme.h"
 
 #include <math.h>
 #include <stdlib.h>
@@ -646,6 +647,7 @@ int art_title_card(const char *title, int sys, image *out)
    unsigned h = 0;
    const unsigned char *s;
    float fam[3], hue, light;
+   unsigned spread;
    uint32_t p0, p1, p2;
    int motif, x, y, k;
    float mx, my;
@@ -654,10 +656,12 @@ int art_title_card(const char *title, int sys, image *out)
       return -1;
    for (s = (const unsigned char *)title; *s; s++)
       h = h * 31 + *s;
-   if (sys == SYS_GBA) { fam[0] = 270; fam[1] = 62; fam[2] = 44; }
+   if (sys == SYS_GBA) { fam[0] = g_th->card_hue; fam[1] = g_th->card_sat; fam[2] = g_th->card_light; }
    else if (sys == SYS_GBC) { fam[0] = 180; fam[1] = 55; fam[2] = 36; }
    else { fam[0] = 110; fam[1] = 24; fam[2] = 38; }
-   hue = fmodf(fam[0] + (float)(h % 111) - 55 + 360, 360);
+   /* a spread inside the family (Classic: 110 degrees) */
+   spread = (unsigned)g_th->card_spread;
+   hue = fmodf(fam[0] + (float)(h % (spread + 1)) - (float)(spread / 2) + 360, 360);
    light = fam[2] + (float)((h >> 5) % 5) * 4 - 6;
    p0 = hsl(hue, fam[1], light, 255);
    p1 = hsl(hue + 14, fam[1] + 8, fmaxf(10, light - 24), 255);

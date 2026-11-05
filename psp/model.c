@@ -1,5 +1,6 @@
 /* model.c -- see model.h. */
 #include "model.h"
+#include "theme.h"
 
 #include <pspkernel.h>
 #include <pspiofilemgr.h>
@@ -16,7 +17,7 @@ int g_ngames;
 entry_t g_entries[MAX_ENTRIES];
 int g_nentries;
 storage_t g_st;
-prefs_t g_prefs = { 1, 0, 1 };
+prefs_t g_prefs = { 1, 0, 1, TH_GRAPHITE };
 int g_scan_ver;
 
 /* ---- status ---- */
@@ -58,11 +59,11 @@ uint32_t status_colour(int st)
 {
    switch (st)
    {
-   case ST_UNKNOWN: return 0xFFF4BB20;      /* warn */
-   case ST_MOVED: case ST_MISSING: return 0xFFEF3F6D;   /* bad */
-   case ST_INXMB: return 0xFF8AC32A;        /* ok */
-   case ST_NOART: return 0xFF8E92B2;        /* muted */
-   default: return 0xFF1FB5B0;              /* info */
+   case ST_UNKNOWN: return g_th->warn;
+   case ST_MOVED: case ST_MISSING: return g_th->bad;
+   case ST_INXMB: return g_th->ok;
+   case ST_NOART: return g_th->fg3;         /* muted */
+   default: return g_th->info;
    }
 }
 
@@ -107,6 +108,7 @@ void prefs_load(void)
    if (ini_get((char *)buf, "prefer_own", v, sizeof(v)) == 0) g_prefs.prefer_own = atoi(v);
    if (ini_get((char *)buf, "region", v, sizeof(v)) == 0) g_prefs.region = atoi(v) % 3;
    if (ini_get((char *)buf, "heroes", v, sizeof(v)) == 0) g_prefs.heroes = atoi(v);
+   if (ini_get((char *)buf, "theme", v, sizeof(v)) == 0 && theme_find(v) >= 0) g_prefs.theme = theme_find(v);
    {
       char *line = (char *)buf;
       while (line && *line && g_st.nfolders < MAX_FOLDERS)
@@ -126,8 +128,8 @@ void prefs_save(void)
    char p[PATHCAP], b[4096];
    int n, i;
    path_join(p, sizeof(p), g_st.app_dir, "xmbapp.ini");
-   n = snprintf(b, sizeof(b), "# GBAdhoc XMB settings\nprefer_own = %d\nregion = %d\nheroes = %d\n",
-                g_prefs.prefer_own, g_prefs.region, g_prefs.heroes);
+   n = snprintf(b, sizeof(b), "# GBAdhoc XMB settings\nprefer_own = %d\nregion = %d\nheroes = %d\ntheme = %s\n",
+                g_prefs.prefer_own, g_prefs.region, g_prefs.heroes, g_themes[g_prefs.theme].id);
    for (i = 0; i < g_st.nfolders && n < (int)sizeof(b) - PATHCAP - 16; i++)
       n += snprintf(b + n, sizeof(b) - (size_t)n, "folder = %s\n", g_st.folders[i]);
    write_all(p, b, (size_t)n);

@@ -99,6 +99,14 @@ float gfx_text_ell(int face, float x, float y, float maxw, const char *s, uint32
 float gfx_text_center(int face, float cx, float y, const char *s, uint32_t c);
 float gfx_text_right(int face, float rx, float y, const char *s, uint32_t c);
 float text_w(int face, const char *s);
+/* harness: the text of the frame last shown (screen px, its colour with the
+ * fade applied, its size), for the contrast / overlap / size check.  Off
+ * unless gfx_text_log(1). */
+typedef struct { short x0, y0, x1, y1; uint32_t c; float px; char s[44]; } gfx_trec;
+void gfx_text_log(int on);
+/* an opaque layer (a dialog, a scrim) now covers (x,y,w,h): the text under it is not on screen */
+void gfx_text_cover(float x, float y, float w, float h);
+int gfx_text_records(const gfx_trec **out);
 float text_wt(int face, const char *s, float track);
 float face_baseline(int face, float lh);   /* baseline offset in a line box of height lh */
 /* Wrap into at most `maxl` lines of width maxw; returns lines; starts[i]/lens[i]

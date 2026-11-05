@@ -8,6 +8,7 @@
 #include <malloc.h>
 #include <math.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 
 #include "gen/xmb_fonts.h"
@@ -22,6 +23,10 @@ static void *g_disp_rel;
 static uint32_t __attribute__((aligned(16))) g_clut[256];
 static gtex g_target;
 static int g_in_target;
+/* the harness's text log (gfx_text_log): this frame's, the last frame's */
+#define TREC_MAX 320
+static gfx_trec g_trec[2][TREC_MAX];
+static int g_ntrec[2], g_tcur, g_tlog;
 static void free_late(void);
 static float clampf_(float v) { return v < 0 ? 0 : v > 1 ? 1 : v; }
 static const void *g_bound;
@@ -179,6 +184,8 @@ static void reset_state(uint32_t clear)
 
 void gfx_frame_begin(uint32_t clear)
 {
+   g_tcur ^= 1;
+   g_ntrec[g_tcur] = 0;
    g_cur_list ^= 1;
    sceGuStart(GU_DIRECT, g_list[g_cur_list]);
    reset_state(clear);
@@ -941,11 +948,63 @@ static const gtex *face_tex(int face)
    return t;
 }
 
+/* ---- the harness's text log ---- */
+
+
+void gfx_text_log(int on)
+{
+   g_tlog = on;
+}
+
+int gfx_text_records(const gfx_trec **out)
+{
+   *out = g_trec[g_tcur];      /* the frame just finished: the one on screen */
+   return g_ntrec[g_tcur];
+}
+
+void gfx_text_cover(float x, float y, float w, float h)
+{
+   float x0 = X(x), y0 = Y(y), x1 = X(x + w), y1 = Y(y + h);
+   int i;
+   if (!g_tlog || g_in_target)
+      return;
+   for (i = 0; i < g_ntrec[g_tcur]; i++)
+   {
+      gfx_trec *r = &g_trec[g_tcur][i];
+      if (r->x0 < x1 && r->x1 > x0 && r->y0 < y1 && r->y1 > y0)
+         r->c &= 0x00FFFFFFu;       /* alpha 0: covered */
+   }
+}
+
+static void text_rec(const char *s, int n, float x0, float y0, float x1, float y1, uint32_t c, float px)
+{
+   gfx_trec *r;
+   if (!g_tlog || g_in_target || ST.s < 0.999f || g_ntrec[g_tcur] >= TREC_MAX)
+      return;
+   if (ST.clip)
+   {
+      if (x0 < ST.cx0) x0 = ST.cx0;
+      if (y0 < ST.cy0) y0 = ST.cy0;
+      if (x1 > ST.cx1) x1 = ST.cx1;
+      if (y1 > ST.cy1) y1 = ST.cy1;
+   }
+   if (x1 <= x0 || y1 <= y0 || x1 <= 0 || y1 <= 0 || x0 >= SCR_W || y0 >= SCR_H)
+      return;
+   r = &g_trec[g_tcur][g_ntrec[g_tcur]++];
+   r->x0 = (short)floorf(x0); r->y0 = (short)floorf(y0);
+   r->x1 = (short)ceilf(x1); r->y1 = (short)ceilf(y1);
+   r->c = col_alpha(c, ST.a);
+   r->px = px;
+   if (n < 0 || n > (int)sizeof(r->s) - 1) n = (int)sizeof(r->s) - 1;
+   snprintf(r->s, sizeof(r->s), "%.*s", n, s);
+}
+
 float gfx_text_n(int face, float x, float y, const char *s, int n, float track, uint32_t c)
 {
    const xf_face *f = &xf_faces[face];
    const char *end = n < 0 ? s + strlen(s) : s + n;
-   float pen = 0;
+   const char *s0 = s;
+   float pen = 0, bx0 = 1e9f, by0 = 1e9f, bx1 = -1e9f, by1 = -1e9f;
    unsigned prev = 0;
    uint32_t gc = C(c);
    int count = 0, cap = 0;
@@ -975,6 +1034,10 @@ float gfx_text_n(int face, float x, float y, const char *s, int n, float track, 
          q[0].u = g->x; q[0].v = g->y; q[0].c = gc; q[0].x = gx; q[0].y = gy; q[0].z = 0;
          q[1].u = g->x + g->w; q[1].v = g->y + g->h; q[1].c = gc;
          q[1].x = gx + g->w * ST.s; q[1].y = gy + g->h * ST.s; q[1].z = 0;
+         if (gx < bx0) bx0 = gx;
+         if (gy < by0) by0 = gy;
+         if (q[1].x > bx1) bx1 = q[1].x;
+         if (q[1].y > by1) by1 = q[1].y;
          count++;
       }
       pen += g->adv / 64.0f + track;
@@ -984,6 +1047,7 @@ float gfx_text_n(int face, float x, float y, const char *s, int n, float track, 
       bind(face_tex(face), ST.s != 1.0f, GU_TCC_RGBA);
       /* positions are already transformed: draw with an identity mapping */
       sceGuDrawArray(GU_SPRITES, TV_FMT, count * 2, 0, v);
+      text_rec(s0, (int)(end - s0), bx0, by0, bx1, by1, c, f->px * ST.s);
    }
    return pen;
 }

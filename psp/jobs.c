@@ -1,5 +1,6 @@
 /* jobs.c -- see jobs.h. */
 #include "jobs.h"
+#include "theme.h"
 
 #include <pspkernel.h>
 #include <stdarg.h>
@@ -236,8 +237,9 @@ static void run_request(const req_t *r)
           * sizes, fit, title, system) */
          char key[3 * PATHCAP + 200], cp[PATHCAP];
          int hit = 0;
-         snprintf(key, sizeof(key), "%d|%s|%ld|%d|%s|%ld|%d|%s|%d", g->icon.kind, g->icon.path, file_size(g->icon.path),
-                  g->bg.kind, g->bg.path, file_size(g->bg.path), g->fit, g->title, g->sys);
+         snprintf(key, sizeof(key), "%d|%s|%ld|%d|%s|%ld|%d|%s|%d|%s", g->icon.kind, g->icon.path, file_size(g->icon.path),
+                  g->bg.kind, g->bg.path, file_size(g->bg.path), g->fit, g->title, g->sys,
+                  g->icon.kind == ART_NONE ? g_th->id : "");
          snprintf(cp, sizeof(cp), "%s/cache/i%08x%08x.raw", g_st.app_dir, fnv(key), fnv(key + 1));
          {
             unsigned char *d;

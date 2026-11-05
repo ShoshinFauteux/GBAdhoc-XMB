@@ -107,6 +107,7 @@ typedef struct
 typedef struct
 {
    int prefer_own, region, heroes;
+   int theme;                /* TH_* (theme.h); ini: theme = graphite|slate|teal|classic */
 } prefs_t;
 
 extern game g_games[MAX_GAMES];

@@ -968,7 +968,7 @@ static int http_once(const url_t *u, net_resp *r, size_t max_bytes, volatile int
       goto out;
 
    n = snprintf(req, sizeof(req),
-                "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: GBAdhoc-XMB/0.1.0-beta.1\r\n"
+                "GET %s HTTP/1.1\r\nHost: %s\r\nUser-Agent: GBAdhoc-XMB/0.1.0-beta.2\r\n"
                 "Accept: */*\r\nAccept-Encoding: identity\r\nConnection: close\r\n\r\n",
                 u->path, u->host);
    if (n <= 0 || (size_t)n >= sizeof(req) || st_write(s, req, (size_t)n) != 0)
