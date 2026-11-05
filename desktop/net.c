@@ -28,11 +28,11 @@ long long net_rate_reset(void)
 void net_init(void)
 {
    char v[16];
-   g_session = WinHttpOpen(L"GBAdhoc-XMB/0.1.0-beta.2 (+https://github.com/ShoshinFauteux/GBAdhoc)",
+   g_session = WinHttpOpen(L"GBAdhoc-XMB/0.2.0-beta.1 (+https://github.com/ShoshinFauteux/GBAdhoc)",
                            WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY, WINHTTP_NO_PROXY_NAME,
                            WINHTTP_NO_PROXY_BYPASS, 0);
    if (!g_session) /* before Windows 8.1 */
-      g_session = WinHttpOpen(L"GBAdhoc-XMB/0.1.0-beta.2", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
+      g_session = WinHttpOpen(L"GBAdhoc-XMB/0.2.0-beta.1", WINHTTP_ACCESS_TYPE_DEFAULT_PROXY,
                               WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0);
    if (g_session)
    {

@@ -11,6 +11,7 @@ work by other people, each under its own licence.
 | **Inter** (variable), The Inter Project Authors | `psp/fonts/InterVariable.ttf`, `desktop/ui/fonts/Inter-latin.woff2` | SIL Open Font License 1.1 (`LICENSES/OFL-1.1.txt`) | PSP app (baked into `psp/gen/xmb_fonts.h`), desktop UI |
 | **JetBrains Mono** 500, The JetBrains Mono Project Authors | `desktop/ui/fonts/JetBrainsMono-500-latin.woff2` | SIL Open Font License 1.1 (`LICENSES/OFL-1.1.txt`) | desktop UI |
 | **WebView2.h**, Microsoft.Web.WebView2 1.0.2903.40, Microsoft Corporation | `desktop/third_party/webview2/` | BSD-style (`desktop/third_party/webview2/LICENSE.txt`, also `LICENSES/WebView2-BSD.txt`) | desktop app; header only, the WebView2 runtime is part of Windows |
+| **GBR1 relay core** and its test client and tests, from [GBAdhoc](https://github.com/ShoshinFauteux/GBAdhoc) (`cb6eb47f`), by the same author | `shared/relay/` (see its `README.md`) | GPL-2.0-or-later, as this repository | Windows app: the Online tab's relay; tests |
 | **Root CA certificates**: ISRG Root X1 and X2, USERTrust ECC and RSA, DigiCert Global Root G2 | `psp/net_ca.h` | Public certificates, redistributed as in every CA bundle | PSP app: checking the TLS servers it fetches from |
 
 ## Linked from the toolchain

@@ -10,7 +10,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--2.0--or--later-5a5a5f" alt="Licence: GPL-2.0-or-later"></a>
-  <a href="https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases"><img src="https://img.shields.io/badge/release-0.1.0--beta.2%20(pre--release)-f5c518" alt="Release: 0.1.0-beta.2, pre-release"></a>
+  <a href="https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases"><img src="https://img.shields.io/badge/release-0.2.0--beta.1%20(pre--release)-f5c518" alt="Release: 0.2.0-beta.1, pre-release"></a>
   <img src="https://img.shields.io/badge/PSP-1000%20%C2%B7%202000%20%C2%B7%203000%20%C2%B7%20Go-1fb5b0" alt="PSP-1000, 2000, 3000 and Go">
   <img src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-8ac32a" alt="Windows 10 and 11">
 </p>
@@ -19,6 +19,7 @@
   <a href="https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases"><b>⬇&nbsp; Download the pre-release</b></a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#how-it-works">How it works</a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#install">Install</a>
+  &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#online-hosting">Online hosting</a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#pre-release-more-work-before-10">Known issues</a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="https://github.com/ShoshinFauteux/GBAdhoc">GBAdhoc</a>
 </p>
@@ -129,6 +130,9 @@ ROMs are never copied.**
 - **Safe staged writes.** An entry is written to `<GBAdhoc>/xmb/stage/`, flushed, read back and
   only then moved into `PSP/GAME` in one rename. After an unplug, the next scan finishes or
   undoes what was interrupted, and the queue resumes at the game it stopped on.
+- **Hosts GBAdhoc online play** (experimental): the Online tab runs GBAdhoc's relay on this
+  PC, opens its ports with UPnP while you host, and shows the rooms, the players and their
+  ping. See [Online hosting](#online-hosting).
 - **Light on the network.** Lists and art are cached in `%LOCALAPPDATA%\GBAdhoc XMB`, GitHub is
   asked a few times a week, and when GitHub rate-limits, thumbnails.libretro.com is used
   instead.
@@ -175,7 +179,7 @@ First, install **GBAdhoc 4.6.0-beta.4 or later** in `PSP/GAME/GBAdhoc`, with you
 
 ### PSP app
 
-1. Download `GBAdhoc-XMB-0.1.0-beta.2-psp.zip` from the
+1. Download `GBAdhoc-XMB-0.2.0-beta.1-psp.zip` from the
    [pre-release](https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases) and unzip it to the
    **root** of your Memory Stick or your PSP Go's internal storage. It lands in
    `PSP/GAME/GBAdhocXMB`.
@@ -186,7 +190,7 @@ First, install **GBAdhoc 4.6.0-beta.4 or later** in `PSP/GAME/GBAdhoc`, with you
 
 ### Windows app
 
-1. Download `GBAdhoc-XMB-0.1.0-beta.2-windows.zip` from the
+1. Download `GBAdhoc-XMB-0.2.0-beta.1-windows.zip` from the
    [pre-release](https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases) and unzip it anywhere.
 2. Connect the PSP in USB mode (on a Go, Settings › USB Connection) and run
    `GBAdhoc-XMB.exe`. It finds the PSP and scans it.
@@ -211,6 +215,67 @@ ROMs, saves and GBAdhoc are never touched.
 - **For the Windows app:** Windows 10 or 11 with the WebView2 runtime, which both include. The
   app explains what to do if it is missing.
 
+## Online hosting
+
+> **Experimental**, like GBAdhoc's online play itself (4.6.0-beta.4 and later).
+
+GBAdhoc can carry its link play over the internet: the two PSPs meet at a relay server, which
+passes their link traffic along, and talk to each other directly when their routers allow it.
+The Windows app's **Online** tab can be that relay. *Host online room* runs GBAdhoc's own relay
+(the same code as the shared server, vendored in `shared/relay/`) on a background thread, and
+asks your router to open its ports with UPnP while you host.
+
+<p align="center">
+  <img src="docs/img/desktop-online.png" alt="The Windows app's Online tab while hosting: UDP 37440-37441 open via UPnP, the public address hidden behind Show, and room KQTR with two players, each with a ping to this PC, loss and packets per second" width="880">
+  <br>
+  <sub><b>The Online tab, hosting.</b> Captured from the real app in a loopback test: the router is a simulated UPnP device and the two players are GBAdhoc's simulated test consoles.</sub>
+</p>
+
+**What the tab shows:** Host / Stop; the ports it listens on, the router's answer and where the
+room can be reached from (this network only, or the internet too); the public address, hidden
+until you click *Show*; each room's code and its players, with the ping from each PSP to this
+PC, the loss (the share of the session's data that had to be resent) and packets per second; a
+*Network check* (your router, its internet address and what kind of address it is, and how the
+shared relay sees this PC); and a log of rooms opening, players joining and leaving, and refusals.
+
+**To play:**
+
+1. On the PC, open **Online** and click **Host online room**. Windows may ask whether GBAdhoc
+   XMB may use the network: allow it on the network you are on.
+2. On each PSP (GBAdhoc 4.6.0-beta.4 or later, Settings › Online play on), set `online_relay`
+   in GBAdhoc's `config.ini` to the address the tab shows: this PC's LAN address for a PSP at
+   home, the public address for the player on the internet.
+3. One PSP opens Wireless › Online › Create room; the other joins with the four-letter code.
+
+**The honest caveats:**
+
+- **It needs UPnP and a public IPv4 address.** If your router has no UPnP, or refuses, or its
+  own internet address is not public (carrier-grade NAT, a second router in front of it, many
+  IPv6-only plans, dorms, phone hotspots), nobody on the internet can reach this PC. The tab
+  says which of these it found, and suggests the **shared relay** (`relay.rayquaza.ca`, which
+  needs nothing from your router) instead. PSPs on your own network can still join.
+- **The PC must stay on.** The room lasts while the app is open and hosting. The app keeps the
+  PC from sleeping while it hosts; closing it, or the lid, ends the room.
+- **The guest sees the host's IP address.** A player on the internet connects to your PC, so
+  they learn its public IP. With the shared relay, nobody sees anyone's address.
+- **The firewall is yours.** The app never changes Windows Firewall settings. If you refused
+  the prompt, allow GBAdhoc XMB in Windows Security › Firewall & network protection › Allow an
+  app through firewall.
+- **No game files pass through this PC**, only link traffic, the same as between two PSPs. The
+  relay never reads or stores the game data it passes on.
+
+**Security.** The same rules as the public server, from the same code: a cookie challenge before
+any room is made (so a forged address gets nothing), no reply ever larger than the request that
+caused it (no amplification), per-address limits on rooms and joins, per-player limits on
+packets and bytes, rooms that expire, and fixed-size tables. The ports are open only while you
+host; *Stop* removes the router's mappings. A UPnP answer is only followed to an address on your
+own network.
+
+**Known limits.** A joining PSP has to be pointed at this PC by its address (`online_relay`);
+the shared relay does not yet redirect a room code to a desktop host. The reachability check
+confirms the router's public address with the shared relay but cannot test inbound traffic from
+outside. NAT-PMP/PCP routers are not tried, only UPnP-IGD.
+
 ## Pre-release: more work before 1.0
 
 GBAdhoc XMB has been tested on a real PSP Go, where it works. This is what we know is left:
@@ -222,7 +287,9 @@ GBAdhoc XMB has been tested on a real PSP Go, where it works. This is what we kn
 - **The Windows exe is unsigned**, so SmartScreen warns about it the first time.
 - **A ROM hack's match confidence is fixed** rather than measured, so a hack's score does not
   yet say how close it is to its base game.
-- **Hosting online rooms from the Windows app** is planned, and not in this release.
+- **Online hosting is experimental.** It has been tested on this PC's loopback against a
+  simulated router and simulated consoles, not yet with a real router and two PSPs over the
+  internet. Reports are welcome, with the Online tab's log.
 - **More art sources.** Today box art comes from libretro-thumbnails and hero art from
   GBAdhoc-heroart only.
 
@@ -249,6 +316,9 @@ Tests:
 ```bash
 tools/test_core.sh        # Linux/WSL: entries checked byte by byte, PARAM.SFO against the SDK's mksfoex
 desktop/test_app.sh       # Windows: the real app on fake PSPs, offline, cable pulls included
+desktop/tests/online/test_online.sh  # Windows: online hosting, loopback only (relay core NAT model and
+                                     # fuzz, UPnP vs a fake router, start/stop x50, two simulated consoles,
+                                     # and the real app's Online tab)
 psp/tools/run_ppsspp.sh   # Linux/WSL: the PSP app in PPSSPP, driven by a key script
 python tools/test_themes.py                  # every theme defines every token, in both apps
 python psp/tools/check_shots.py <shots dir>  # contrast, size and overlap of the text in those shots
@@ -261,7 +331,7 @@ The test folders hold placeholder ROMs only: correct headers and names, no game.
 | `launcher/` | The per-game launcher every entry carries |
 | `psp/` | The PSP app. `psp/gen/` holds generated headers (fonts, art, the name list, the launcher), committed; `psp/tools/` regenerates them |
 | `desktop/` | The Windows app: the C host, the WebView2 bridge and the UI in `desktop/ui/` |
-| `shared/` | The entry writer and the No-Intro matcher both apps build |
+| `shared/` | The entry writer and the No-Intro matcher both apps build; `shared/relay/`, GBAdhoc's online relay core ([provenance and licence](shared/relay/README.md)) |
 | `tools/` | The command-line maker, the entry checker and the core test |
 | `docs/` | [The entry contract](docs/XMB-LAUNCH.md) and [the shared core](docs/SHARED-CORE.md) |
 

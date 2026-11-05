@@ -10,6 +10,9 @@ This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 PARTICULAR PURPOSE.
 
+The Windows app's online relay (shared/relay/) comes from GBAdhoc, by the same author,
+under the same licence (GPL-2.0-or-later).
+
 It includes or links third-party software under other licences: stb_image and
 stb_image_write (public domain or MIT), Inter and JetBrains Mono (SIL OFL 1.1),
 Microsoft's WebView2 header (BSD-style), Mbed TLS (Apache-2.0 or

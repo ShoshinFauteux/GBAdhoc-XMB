@@ -1745,7 +1745,7 @@ static const char *REGIONS[3] = { "USA, Europe first", "Europe first", "Japan fi
 static void act_about(int a)
 {
    (void)a;
-   dlg("GBAdhoc XMB 0.1.0-beta.2", NULL, "Gives each GBA, GB and GBC game its own entry in the XMB's Game column, opening straight into GBAdhoc. An entry is a ~200 KB launcher; ROMs are never copied.\n\nBox art: libretro-thumbnails \xC2\xB7 Hero art: GBAdhoc-heroart");
+   dlg("GBAdhoc XMB 0.2.0-beta.1", NULL, "Gives each GBA, GB and GBC game its own entry in the XMB's Game column, opening straight into GBAdhoc. An entry is a ~200 KB launcher; ROMs are never copied.\n\nBox art: libretro-thumbnails \xC2\xB7 Hero art: GBAdhoc-heroart");
    add_btn("OK", act_close, 0, 0);
 }
 
@@ -1787,7 +1787,7 @@ static int settings_rows(srow *r)
    if (g_st.found) snprintf(r[7].small, 160, "%s%s%s", g_st.version, g_st.version[0] ? " \xC2\xB7 " : "", g_st.install);
    else snprintf(r[7].small, 160, "not found on the %s", g_st.label);
    snprintf(r[8].v, 64, "About GBAdhoc XMB");
-   snprintf(r[8].small, 160, "version 0.1.0-beta.2");
+   snprintf(r[8].small, 160, "version 0.2.0-beta.1");
    return NSET;
 }
 
