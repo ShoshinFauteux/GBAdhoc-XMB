@@ -93,8 +93,10 @@ void ui_netconf_open(void)
       LOG("netconf open");
    }
    else
+   {
       LOG("netconf failed to open");
       ui_toast_ext("The network dialog could not open. Set up a connection in the XMB's Network Settings.", 2);
+   }
 
 }
 

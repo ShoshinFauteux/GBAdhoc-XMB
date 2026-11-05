@@ -25,6 +25,8 @@ app's `prefs.json`. Dark and light in the Windows app work with every theme.
   small text.
 - Windows: the confidence chips on art keep readable colours in light mode; the selected card
   has a visible focus ring in light mode.
+- **Fixed:** the PSP app no longer says "The network dialog could not open" when the dialog
+  opened fine (a missing block in `psp/main.c`).
 
 ## 0.1.0-beta.1
 
