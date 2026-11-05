@@ -63,6 +63,30 @@ void relay_core_input(rl_core *c, int sock, const rl_addr *from,
 void relay_core_tick(rl_core *c, uint64_t now_ms);
 void relay_core_stats(const rl_core *c, rl_core_stats *out);
 
+/* ---- GBAdhoc XMB addition (shared/relay/README.md) ----------------------
+ * A read-only copy of the live rooms, for a host's status screen.  Fills up
+ * to cap views and returns how many rooms are live (may exceed cap).  The
+ * tokens are never copied out. */
+typedef struct rl_slot_view
+{
+   int slot;
+   rl_addr addr;
+   uint8_t nat;
+   uint64_t since_ms, last_ms;
+} rl_slot_view;
+
+typedef struct rl_room_view
+{
+   char code[RL_CODE_LEN + 1];
+   uint8_t mode;
+   uint64_t created_ms, last_ms;
+   int joined_ever;
+   int nslots;
+   rl_slot_view s[RL_SLOTS];
+} rl_room_view;
+
+unsigned relay_core_rooms(const rl_core *c, rl_room_view *out, unsigned cap);
+
 #ifdef __cplusplus
 }
 #endif

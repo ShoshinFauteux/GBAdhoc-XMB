@@ -22,6 +22,7 @@ typedef struct
    rl_addr addr, priv;
    uint64_t token;
    uint64_t last_ms, repin_ms;
+   uint64_t since_ms;        /* XMB addition: when the slot was filled */
    uint8_t nat;
    uint32_t bucket;          /* packets this second */
    uint32_t bucket_bytes;    /* bytes this second */
@@ -329,6 +330,7 @@ static void fill_slot(rl_core *c, rl_slot *s, const rl_addr *from,
       s->token = c->cfg.random64(c->cfg.user);
    while (!s->token);
    s->last_ms = now;
+   s->since_ms = now;        /* XMB addition */
 }
 
 static void on_create(rl_core *c, int sock, const rl_addr *from,
@@ -676,4 +678,42 @@ void relay_core_tick(rl_core *c, uint64_t now)
          if (r->s[k].used && now - r->s[k].last_ms > c->cfg.slot_idle_ms)
             slot_leave(c, r, k, "silent");
    }
+}
+
+/* ---- GBAdhoc XMB addition (shared/relay/README.md): a read-only view of the
+ * room table for the desktop host's Online tab.  Copies; never changes state. */
+unsigned relay_core_rooms(const rl_core *c, rl_room_view *out, unsigned cap)
+{
+   unsigned i, n = 0;
+   int k;
+   for (i = 0; i < c->nrooms; i++)
+   {
+      const rl_room *r = &c->rooms[i];
+      rl_room_view *v;
+      if (!r->used)
+         continue;
+      if (n < cap && out)
+      {
+         v = &out[n];
+         memset(v, 0, sizeof(*v));
+         memcpy(v->code, r->code, RL_CODE_LEN);
+         v->code[RL_CODE_LEN] = '\0';
+         v->mode = r->mode;
+         v->created_ms = r->created_ms;
+         v->last_ms = r->last_ms;
+         v->joined_ever = r->joined_ever;
+         for (k = 0; k < RL_SLOTS; k++)
+            if (r->s[k].used)
+            {
+               rl_slot_view *s = &v->s[v->nslots++];
+               s->slot = k;
+               s->addr = r->s[k].addr;
+               s->nat = r->s[k].nat;
+               s->since_ms = r->s[k].since_ms;
+               s->last_ms = r->s[k].last_ms;
+            }
+      }
+      n++;
+   }
+   return n;
 }
