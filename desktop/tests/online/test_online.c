@@ -9,11 +9,15 @@
  *   test_online loopback PORT CLIENT OUT  the relay and two simulated consoles
  *                                         (relay_client.exe): create, join, relay, then the
  *                                         direct path; the Online tab's room list during it
+ *   test_online discovery PORT CLIENT OUT the room code in a directory (in-process, on
+ *                                         127.0.0.1) and the invite code: one console joins
+ *                                         by LOOKUP, one by the invite, no server
  */
 #include "../../online.h"
 #include "../../upnp.h"
 #include "../../json.h"
 #include "../../../shared/relay/relay_proto.h"
+#include "../../../shared/relay/relay_core.h"
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -482,6 +486,245 @@ static int t_loopback(unsigned port, const char *client, const char *outdir)
    return 0;
 }
 
+/* ---- discovery: this PC's room code in a directory, and the invite code -----------
+ * The directory is a relay_core with the directory on, in this process, on
+ * 127.0.0.1 (the shared server's role).  The desktop host registers its room code
+ * there; one console finds the room by LOOKUP of that code, the other by the LAN
+ * invite code with no server at all; both play through this PC. */
+
+static struct
+{
+   SOCKET s[2];
+   rl_core *core;
+   volatile LONG stop;
+   HANDLE t;
+} D;
+
+static void d_send(void *u, int sock, const rl_addr *to, const void *buf, size_t len)
+{
+   struct sockaddr_in a;
+   (void)u;
+   memset(&a, 0, sizeof(a));
+   a.sin_family = AF_INET;
+   a.sin_addr.s_addr = to->ip_be;
+   a.sin_port = htons(to->port);
+   sendto(D.s[sock], (const char *)buf, (int)len, 0, (struct sockaddr *)&a, sizeof(a));
+}
+
+static uint64_t d_rand(void *u)
+{
+   static uint64_t x = 0x9E3779B97F4A7C15ull;
+   (void)u;
+   x ^= x << 13; x ^= x >> 7; x ^= x << 17;
+   return x;
+}
+
+static DWORD WINAPI d_thread(LPVOID p)
+{
+   uint8_t b[700];
+   uint64_t last = 0;
+   (void)p;
+   while (!D.stop)
+   {
+      fd_set f;
+      struct timeval tv = { 0, 20000 };
+      int k;
+      FD_ZERO(&f);
+      FD_SET(D.s[0], &f);
+      FD_SET(D.s[1], &f);
+      select(0, &f, NULL, NULL, &tv);
+      for (k = 0; k < 2; k++)
+         for (;;)
+         {
+            struct sockaddr_in a;
+            int al = sizeof(a), n = recvfrom(D.s[k], (char *)b, sizeof(b), 0, (struct sockaddr *)&a, &al);
+            rl_addr from;
+            if (n < 0)
+               break;
+            from.ip_be = a.sin_addr.s_addr;
+            from.port = ntohs(a.sin_port);
+            relay_core_input(D.core, k, &from, b, (size_t)n, GetTickCount64());
+         }
+      if (GetTickCount64() - last >= 100)
+      {
+         last = GetTickCount64();
+         relay_core_tick(D.core, last);
+      }
+   }
+   return 0;
+}
+
+static int d_start(unsigned port)
+{
+   rl_core_cfg cc;
+   int k;
+   u_long nb = 1;
+   memset(&cc, 0, sizeof(cc));
+   cc.send = d_send;
+   cc.random64 = d_rand;
+   cc.directory = 1;
+   D.core = relay_core_create(&cc);
+   for (k = 0; k < 2; k++)
+   {
+      struct sockaddr_in a;
+      D.s[k] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+      memset(&a, 0, sizeof(a));
+      a.sin_family = AF_INET;
+      a.sin_port = htons((u_short)(port + k));
+      a.sin_addr.s_addr = inet_addr("127.0.0.1");
+      if (bind(D.s[k], (struct sockaddr *)&a, sizeof(a)) != 0)
+         return -1;
+      ioctlsocket(D.s[k], FIONBIO, &nb);
+   }
+   D.stop = 0;
+   D.t = CreateThread(NULL, 0, d_thread, NULL, 0, NULL);
+   return 0;
+}
+
+static void d_stats(rl_core_stats *st)
+{
+   Sleep(150);                 /* let the directory thread drain */
+   relay_core_stats(D.core, st);
+}
+
+static void d_stop(void)
+{
+   InterlockedExchange(&D.stop, 1);
+   WaitForSingleObject(D.t, INFINITE);
+   CloseHandle(D.t);
+   closesocket(D.s[0]);
+   closesocket(D.s[1]);
+   relay_core_destroy(D.core);
+}
+
+/* two consoles with their own arguments; RESULT lines into res */
+static int run_two(const char *client, const char *outdir, const char *tag, const char *arg[2],
+                   unsigned bind0, char res[2][600])
+{
+   char cmd[2][900], out[2][600];
+   HANDLE p[2];
+   int k, rc = 0;
+   DWORD ex;
+   for (k = 0; k < 2; k++)
+   {
+      snprintf(out[k], sizeof(out[k]), "%s/%s-%s.txt", outdir, tag, k ? "join" : "host");
+      snprintf(cmd[k], sizeof(cmd[k]), "\"%s\" %s %s --bind 127.0.0.1:%u --payloads 400 --secs 40",
+               client, arg[k], k ? "--join" : "--host", bind0 + (unsigned)k);
+      p[k] = spawn(cmd[k], out[k]);
+      if (!p[k])
+         return -1;
+      if (!k)
+         Sleep(300);
+   }
+   WaitForMultipleObjects(2, p, TRUE, 60000);
+   for (k = 0; k < 2; k++)
+   {
+      if (WaitForSingleObject(p[k], 5000) == WAIT_TIMEOUT)
+         TerminateProcess(p[k], 9);
+      GetExitCodeProcess(p[k], &ex);
+      rc |= ex != 0;
+      CloseHandle(p[k]);
+      show_result(out[k], res[k], 600);
+   }
+   return rc;
+}
+
+static int t_discovery(unsigned port, const char *client, const char *outdir)
+{
+   online_cfg c;
+   char code[16], err[300], res[2][600], shared[40], room[8] = "", inv_lan[20] = "", want[40], a0[120], a1[120];
+   const char *arg[2];
+   unsigned dport = port + 50;
+   int i, rc, registered = 0, room_seen = 0, label_ok = 0;
+   jv *st;
+   rl_core_stats ds;
+   printf("== discovery: the desktop relay on 127.0.0.1:%u, a directory on 127.0.0.1:%u\n", port, dport);
+   if (d_start(dport) != 0)
+   {
+      CHECK(0, "the test directory could not bind 127.0.0.1:%u", dport);
+      return 0;
+   }
+   snprintf(shared, sizeof(shared), "127.0.0.1:%u", dport);
+   cfg_for(&c, port, NULL, shared);
+   c.directory = 1;
+   if (online_start(&c, code, sizeof(code), err, sizeof(err)) != 0)
+   {
+      CHECK(0, "start: %s", err);
+      d_stop();
+      return 0;
+   }
+   for (i = 0; i < 50 && !registered; i++)
+   {
+      Sleep(100);
+      st = status();
+      registered = jv_bool(jv_get(st, "codes"), "roomRegistered", 0);
+      if (registered)
+      {
+         jv *cd = jv_get(st, "codes");
+         snprintf(room, sizeof(room), "%s", jv_str(cd, "room", ""));
+         snprintf(inv_lan, sizeof(inv_lan), "%s", jv_str(cd, "inviteLan", ""));
+         CHECK(!strcmp(jv_str(jv_get(cd, "directory"), "state", ""), "registered"), "directory state: registered");
+         CHECK(!strcmp(jv_str(cd, "invite", "?"), ""), "no public invite code on loopback (no public address)");
+      }
+      jv_free(st);
+   }
+   CHECK(registered, "the room code was registered with the directory within 5 s");
+   CHECK(strlen(room) == 4, "room code %s: four letters", room);
+   /* 127.0.0.1 on a non-default port: the 11-character long form */
+   CHECK(strlen(inv_lan) == 13, "LAN invite code %s: the long form (port %u)", inv_lan, port);
+   d_stats(&ds);
+   CHECK(ds.dir_now == 1, "the directory holds one entry (%u)", ds.dir_now);
+
+   /* one console by the room code (LOOKUP at the directory), one by the invite code */
+   snprintf(a0, sizeof(a0), "--server 127.0.0.1:%u --lookup --code %s", dport, room);
+   snprintf(a1, sizeof(a1), "--invite %s", inv_lan);
+   arg[0] = a0;
+   arg[1] = a1;
+   rc = run_two(client, outdir, "disc", arg, port + 60, res);
+   printf("     code:   %s\n     invite: %s\n", res[0], res[1]);
+   CHECK(rc == 0, "both consoles got all 400 payloads in order");
+   snprintf(want, sizeof(want), "server=127.0.0.1:%u", port);
+   CHECK(strstr(res[0], want) && strstr(res[0], "located=2"), "the code found this PC through the directory");
+   CHECK(strstr(res[1], want), "the invite code reached this PC with no server");
+   st = status();
+   {
+      jv *rooms = jv_get(st, "rooms");
+      for (i = 0; i < jv_len(rooms); i++)
+         if (!strcmp(jv_str(jv_at(rooms, i), "code", ""), room))
+            room_seen = 1;
+   }
+   CHECK(jv_num(jv_get(st, "counters"), "roomsMade", 0) == 1, "one room was made on this PC");
+   jv_free(st);
+   (void)room_seen;
+   (void)label_ok;
+   d_stats(&ds);
+   CHECK(ds.rooms_made == 0 && ds.fwd == 0, "the directory made no room and forwarded nothing (rooms %u, fwd %u)",
+         ds.rooms_made, ds.fwd);
+   CHECK(ds.lookups >= 1 && ds.located >= 1, "the directory answered %u lookup(s)", ds.lookups);
+   printf("     directory bytes for the session: %u (UDP payload)\n", ds.dir_rx_bytes + ds.dir_tx_bytes);
+   online_stop();
+   d_stats(&ds);
+   CHECK(ds.dir_now == 0, "stop unregistered the code at once");
+   CHECK(online_live_objects() == 0, "stopped cleanly");
+
+   /* XMB_DIRECTORY=off: nothing registered, the invite code still offered */
+   _putenv("XMB_DIRECTORY=off");
+   if (online_start(&c, code, sizeof(code), err, sizeof(err)) == 0)
+   {
+      Sleep(800);
+      st = status();
+      CHECK(!strcmp(jv_str(jv_get(jv_get(st, "codes"), "directory"), "state", ""), "off"), "XMB_DIRECTORY=off: no registration");
+      CHECK(jv_str(jv_get(st, "codes"), "inviteLan", "")[0] != 0, "XMB_DIRECTORY=off: the invite code is still there");
+      jv_free(st);
+      online_stop();
+      d_stats(&ds);
+      CHECK(ds.dir_now == 0, "the directory holds nothing");
+   }
+   _putenv("XMB_DIRECTORY=");
+   d_stop();
+   return 0;
+}
+
 int main(int argc, char **argv)
 {
    WSADATA w;
@@ -500,6 +743,8 @@ int main(int argc, char **argv)
    }
    else if (argc >= 5 && !strcmp(argv[1], "loopback"))
       t_loopback((unsigned)atoi(argv[2]), argv[3], argv[4]);
+   else if (argc >= 5 && !strcmp(argv[1], "discovery"))
+      t_discovery((unsigned)atoi(argv[2]), argv[3], argv[4]);
    else
    {
       printf("usage: see test_online.c\n");

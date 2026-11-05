@@ -419,9 +419,9 @@
 
   // ---------- online: host GBAdhoc's relay on this PC (online.js draws it) ----------
   const O = window.ONLINE;
-  const onView = { port: 27420, upnp: true, showIp: false, logOpen: false, busy: false, checking: false };
-  function onPrefs() { const o = prefs.online || {}; if (o.port) onView.port = o.port; if (o.upnp === false) onView.upnp = false; }
-  function saveOnPrefs() { prefs.online = { port: onView.port, upnp: onView.upnp }; X.savePrefs(); }
+  const onView = { port: 27420, upnp: true, directory: true, showIp: false, logOpen: false, busy: false, checking: false };
+  function onPrefs() { const o = prefs.online || {}; if (o.port) onView.port = o.port; if (o.upnp === false) onView.upnp = false; if (o.directory === false) onView.directory = false; }
+  function saveOnPrefs() { prefs.online = { port: onView.port, upnp: onView.upnp, directory: onView.directory }; X.savePrefs(); }
   function renderOnline(m) {
     m.innerHTML = O.html(onSt, onCheck, onView);
     m.querySelector('#on-host').addEventListener('click', () => (onSt && onSt.running ? stopHosting() : startHosting()));
@@ -429,6 +429,7 @@
     const port = m.querySelector('#on-port');
     port.addEventListener('change', () => { const v = parseInt(port.value, 10); if (v >= 1024 && v <= 65534) { onView.port = v; saveOnPrefs(); } else port.value = onView.port; });
     m.querySelector('#on-upnp').addEventListener('click', () => { if (onSt && onSt.running) return; onView.upnp = !onView.upnp; saveOnPrefs(); render(); });
+    m.querySelector('#on-dir').addEventListener('click', () => { if (onSt && onSt.running) return; onView.directory = !onView.directory; saveOnPrefs(); render(); });
     m.querySelector('#on-logbox').addEventListener('toggle', (e) => { onView.logOpen = e.target.open; });
   }
   // the live parts only, so the port field and the open log keep their state
@@ -448,7 +449,7 @@
   function onlineLoop() { clearInterval(onTimer); onTimer = setInterval(() => { if (ui.view === 'online' || (onSt && onSt.running)) pollOnline(); }, 1000); }
   async function startHosting() {
     onView.busy = true; render();
-    try { onSt = await H.call('onlineStart', { port: onView.port, upnp: onView.upnp }); toast(`Hosting on UDP ${onSt.port}-${onSt.port + 1}`, 'ok'); } catch (e) { toast(e.message, 'bad'); }
+    try { onSt = await H.call('onlineStart', { port: onView.port, upnp: onView.upnp, directory: onView.directory }); toast(`Hosting on UDP ${onSt.port}-${onSt.port + 1}`, 'ok'); } catch (e) { toast(e.message, 'bad'); }
     onView.busy = false; render();
   }
   async function stopHosting() {

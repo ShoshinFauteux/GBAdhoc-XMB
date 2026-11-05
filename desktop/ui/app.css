@@ -104,3 +104,14 @@ details#on-logbox[open] summary h3::after{content:" ▾"}
 .olog .ok{color:var(--ok-text)}.olog .warn{color:var(--warn-text)}.olog .bad{color:var(--bad-text)}
 .olog div.ok .mono,.olog div.warn .mono,.olog div.bad .mono{color:var(--text-4)}
 .win[data-theme=light] .onote.ok,.win[data-theme=light] .onote.bad,.win[data-theme=light] .onote.warn,.win[data-theme=light] .onote.info{color:var(--text)}
+/* the two codes (Tell your friend) */
+.codes .coderow{display:flex;gap:14px;flex-wrap:wrap;padding:6px 16px 10px}
+.codebox{flex:1 1 260px;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;background:var(--bg-2, transparent)}
+.codebox.off{opacity:.62}
+.codebox .lbl{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)}
+.codebox .lbl .hint{font-weight:600;text-transform:none;letter-spacing:0;color:var(--text-4);margin-left:6px}
+.codebox .big{font:800 30px var(--mono);letter-spacing:.16em;color:var(--accent-text);margin:6px 0 4px}
+.codebox .big.inv{font-size:24px;letter-spacing:.08em}
+.codebox .sub{font-size:11.5px;color:var(--text-3)}
+.codebox .sub.lan{margin-top:8px}
+.codebox .acts{margin-top:8px;display:flex;gap:6px}

@@ -1,5 +1,32 @@
 # Changelog
 
+## Unreleased (planned 0.3.0-beta.1)
+
+**Friends outside your network join with a code (Windows, experimental).** A PSP no longer has
+to be pointed at this PC with `online_relay`: it types a code in GBAdhoc's Wireless › Online ›
+Join with code.
+
+- **Room code, via the directory.** Hosting picks a four-letter room code and lists it in a small
+  directory on the shared server (`relay.rayquaza.ca`, GBAdhoc's new REGISTER / LOOKUP messages).
+  A PSP looks the code up and then talks only to this PC; the directory never carries game
+  traffic. Registration is refreshed every 60 s (32 bytes, answered with 24) and removed on Stop.
+  On by default: Settings › *List the room in the directory* (`XMB_DIRECTORY=off` for experts).
+- **Invite code, no server.** Eight Crockford base32 characters (this PC's public address and a
+  CRC-8 check, the default port), eleven with another port (address, port, CRC-7). Works when
+  the directory is down; the tab then puts it first. A LAN invite code is shown for PSPs at home.
+- **Direct or via host.** Two PSPs that join this PC are introduced and hole-punch a direct path;
+  this PC forwards only when that fails. Each player's row says *Direct* or *Via host*.
+- **The same relay core**, vendored again from GBAdhoc `24e3e2dd` (`shared/relay/README.md`):
+  the directory, the home code, `relay_dirclient.c` and `invite_code.h`.
+- **Tests** (loopback only): the desktop-host + directory NAT model and the invite-code tests
+  (every single typo and swap refused), fuzzing over the new messages, the Online tab's codes on
+  fixtures, and a discovery run of the real host code: it registers with an in-process directory
+  on 127.0.0.1, one console joins by the room code, the other by the invite code, and Stop frees
+  the code.
+- **Still open for the owner:** the code formats, the directory default, invite expiry (an invite
+  is valid while the address and port stay the same), hiding the public address by default (it
+  is hidden), a QR code (not built), and the relay-fallback default.
+
 ## 0.2.0-beta.1
 
 **Host online room (Windows, experimental).** The Windows app becomes a 2-in-1: besides making

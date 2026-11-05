@@ -435,6 +435,7 @@ static void on_message(const char *text)
       memset(&oc, 0, sizeof(oc));
       oc.port = (unsigned)jv_num(args, "port", 0);
       oc.upnp = jv_bool(args, "upnp", 1);
+      oc.directory = jv_bool(args, "directory", 1);   /* default ON: the owner may flip it */
       if (online_start(&oc, code, sizeof(code), err, sizeof(err)) == 0)
       {
          sb b;

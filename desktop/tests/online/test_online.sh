@@ -39,14 +39,16 @@ docker run --rm --network none -v "$MNT":/g:ro -v "$(win "$BIN")":/out -w /g gba
   W="-O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-missing-field-initializers -static"
   $CC $W -I$R -I$R/client -o $O/test_relay_nat.exe $R/tests/test_relay_nat.c $R/relay_core.c $R/client/transport_relay.c $R/client/netdrv.c
   $CC $W -I$R -I$R/client -o $O/fuzz_relay.exe $R/tests/fuzz_relay.c $R/relay_core.c $R/client/transport_relay.c
+  $CC $W -I$R -I$R/client -o $O/test_relay_desktop.exe $R/tests/test_relay_desktop.c $R/relay_core.c $R/relay_dirclient.c $R/client/transport_relay.c $R/client/netdrv.c
+  $CC $W -I$R -o $O/test_invite.exe $R/tests/test_invite.c
   $CC $W -I$R -o $O/test_obs.exe $R/tests/test_obs.c $R/relay_obs.c
   $CC $W -include $T/count_alloc.h -o $O/test_online.exe $T/test_online.c desktop/online.c desktop/upnp.c \
-      desktop/json.c $R/relay_core.c $R/relay_obs.c -lws2_32 -lbcrypt
+      desktop/json.c $R/relay_core.c $R/relay_dirclient.c $R/relay_obs.c -lws2_32 -lbcrypt
   $CC $W -I$T/wincompat -include $T/wincompat/wincompat.h -I$R -I$R/client -o $O/relay_client.exe \
       $R/tests/relay_client.c $R/client/transport_relay.c $R/client/netdrv.c -lws2_32 -lwinmm -lpthread
   cp $O/*.exe /out/' \
   || { echo "FAILED: mingw build"; exit 1; }
-for t in test_relay_nat test_obs; do echo "-- $t.exe"; runt "$BIN/$t.exe"; done
+for t in test_relay_nat test_relay_desktop test_invite test_obs; do echo "-- $t.exe"; runt "$BIN/$t.exe"; done
 echo "-- fuzz_relay.exe 1000000"; runt "$BIN/fuzz_relay.exe" 1000000
 
 step "3. Online tab states (node)"
@@ -84,6 +86,9 @@ igd_stop
 
 step "6. loopback: desktop relay + two simulated consoles"
 run "$BIN/test_online.exe" loopback 37450 "$(win "$BIN/relay_client.exe")" "$(win "$OUT")"
+
+step "6b. discovery: the room code in a directory (in-process, loopback) and the invite code"
+run "$BIN/test_online.exe" discovery 37500 "$(win "$BIN/relay_client.exe")" "$(win "$OUT")"
 
 step "7. the real app"
 EXE="$DESK/dist/GBAdhoc-XMB.exe"

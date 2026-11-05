@@ -8,6 +8,8 @@
 #include "upnp.h"
 #include "../shared/relay/relay_core.h"
 #include "../shared/relay/relay_obs.h"
+#include "../shared/relay/relay_dirclient.h"
+#include "../shared/relay/invite_code.h"
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -67,6 +69,11 @@ static struct
    uint32_t pr_nonce;
    uint64_t pr_sent_ms;
    char last_err[200];
+   /* this PC's own room: its code (relay_core_set_home), and the directory
+    * registration of that code (relay_dirclient) */
+   char home[RL_CODE_LEN + 1];
+   int dc_on;
+   rl_dirc dc;
 } G;
 
 static volatile LONG g_live;
@@ -336,6 +343,96 @@ static SOCKET udp_bind(const char *ip, unsigned port)
    return s;
 }
 
+/* ---- this PC's room code and the directory ------------------------------------
+ * The room code is picked here at start (four letters) and given to the core as
+ * its home code, so a PSP that came by an invite code (no code of its own) lands
+ * in this PC's room and invite codes work with no server.  With the directory on,
+ * the same code is registered with the shared relay (relay_dirclient) from the
+ * relay's own socket, so the directory sees the router's mapping of it; a code
+ * the directory finds taken is replaced by its pick, and the core is told.
+ * Registered whenever hosting with the directory on, whatever the verdict: a code
+ * that cannot be reached from outside is harmless, and PSPs on this network can
+ * use it.  The status says the verdict so the tab can say "players outside cannot
+ * reach this PC". */
+
+static void dc_send(void *u, uint32_t ip, uint16_t port, const void *buf, size_t len)
+{
+   struct sockaddr_in a;
+   (void)u;
+   if (G.s[0] == INVALID_SOCKET)
+      return;
+   memset(&a, 0, sizeof(a));
+   a.sin_family = AF_INET;
+   a.sin_addr.s_addr = ip;
+   a.sin_port = htons(port);
+   sendto(G.s[0], (const char *)buf, (int)len, 0, (struct sockaddr *)&a, sizeof(a));
+}
+
+static void dc_log(void *u, const char *line)
+{
+   char code[8], why[40];
+   (void)u;
+   kv(line, "code", code, sizeof(code));
+   if (!strncmp(line, "dir_registered", 14))
+      logf_("ok", "Room %s is listed in the directory (%s): PSPs anywhere can join with these four letters", code,
+            G.pr_name);
+   else if (!strncmp(line, "dir_lost", 8))
+      logf_("warn", "The directory no longer knew room %s (it may have restarted): registering it again", code);
+   else if (!strncmp(line, "dir_code_taken", 14))
+      logf_("warn", "Room code %s is taken in the directory: asking it for another", code);
+   else if (!strncmp(line, "dir_refused", 11))
+   {
+      const char *q = strstr(line, "why=\"");
+      snprintf(why, sizeof(why), "%s", q ? q + 5 : "");
+      if (strchr(why, '"'))
+         *strchr(why, '"') = '\0';
+      logf_("warn", "The directory refused the room code (%s). The invite code still works; retrying in 60 s", why);
+   }
+   else
+      logf_("", "%s", line);
+}
+
+/* this PC's LAN address: the bind address when one is given, else the first
+ * private address of this host; 0 = none */
+static uint32_t first_lan_ip(const char *bind)
+{
+   char host[256];
+   struct addrinfo hints, *res = NULL, *r;
+   uint32_t ip = 0;
+   if (strcmp(bind, "0.0.0.0"))
+      return inet_addr(bind);
+   memset(&hints, 0, sizeof(hints));
+   hints.ai_family = AF_INET;
+   if (gethostname(host, sizeof(host)) == 0 && getaddrinfo(host, NULL, &hints, &res) == 0)
+   {
+      for (r = res; r && !ip; r = r->ai_next)
+      {
+         const char *s = inet_ntoa(((struct sockaddr_in *)r->ai_addr)->sin_addr);
+         if (upnp_ip_class(s) == IPC_PRIVATE)
+            ip = ((struct sockaddr_in *)r->ai_addr)->sin_addr.s_addr;
+      }
+      freeaddrinfo(res);
+   }
+   return ip;
+}
+
+static void pick_home(char out[RL_CODE_LEN + 1])
+{
+   uint64_t x = rnd64(NULL);
+   int k;
+   for (k = 0; k < RL_CODE_LEN; k++, x /= RL_CODE_SYMBOLS)
+      out[k] = RL_CODE_ALPHABET[x % RL_CODE_SYMBOLS];
+   out[RL_CODE_LEN] = '\0';
+}
+
+static int directory_wanted(const online_cfg *c)
+{
+   const char *e = getenv("XMB_DIRECTORY");
+   if (e && (!strcmp(e, "off") || !strcmp(e, "0")))
+      return 0;
+   return c->directory != 0;
+}
+
 /* ---- the relay thread --------------------------------------------------------- */
 
 static int authenticated_type(int t)
@@ -391,6 +488,20 @@ static DWORD WINAPI relay_thread(LPVOID p)
                LeaveCriticalSection(&G.cs);
                continue;
             }
+            /* the directory's answers to our REGISTERs: never the core's */
+            if (k == 0 && G.dc_on && rl_dirc_input(&G.dc, from.ip_be, from.port, buf, (size_t)n, t))
+            {
+               if (G.dc.code_changed)
+               {
+                  G.dc.code_changed = 0;
+                  if (strcmp(G.home, G.dc.code))
+                     logf_("", "Room code changed to %s (the directory's pick)", G.dc.code);
+                  snprintf(G.home, sizeof(G.home), "%s", G.dc.code);
+                  relay_core_set_home(G.core, G.home);
+               }
+               LeaveCriticalSection(&G.cs);
+               continue;
+            }
             {
                rl_core_stats b4, af;
                relay_core_stats(G.core, &b4);
@@ -409,6 +520,8 @@ static DWORD WINAPI relay_thread(LPVOID p)
          last_tick = t;
          EnterCriticalSection(&G.cs);
          relay_core_tick(G.core, t);
+         if (G.dc_on)
+            rl_dirc_tick(&G.dc, t);
          if (G.pr_state == PR_PENDING)
          {
             G.pr_nonce = (uint32_t)rnd64(NULL) | 1u;
@@ -639,6 +752,25 @@ int online_start(const online_cfg *cfg, char *code, size_t ccap, char *err, size
    G.pr_state = PR_OFF;
    if (strcmp(G.pr_name, "off"))
       G.pr_state = resolve(G.pr_name, &G.pr_addr) == 0 ? PR_PENDING : PR_NODNS;
+   pick_home(G.home);
+   relay_core_set_home(G.core, G.home);
+   G.dc_on = 0;
+   memset(&G.dc, 0, sizeof(G.dc));
+   if (directory_wanted(&G.cfg) && G.pr_state == PR_PENDING)
+   {
+      rl_dirc_cfg dc;
+      memset(&dc, 0, sizeof(dc));
+      dc.dir_ip_be = G.pr_addr.ip_be;
+      dc.dir_port = G.pr_addr.port;
+      dc.adv_port = (uint16_t)G.cfg.port;      /* UPnP maps port -> the same port */
+      dc.priv_ip_be = first_lan_ip(G.cfg.bind);
+      dc.priv_port = (uint16_t)G.cfg.port;
+      snprintf(dc.want, sizeof(dc.want), "%s", G.home);
+      dc.send = dc_send;
+      dc.log = dc_log;
+      rl_dirc_start(&G.dc, &dc, now_ms());
+      G.dc_on = 1;
+   }
    LeaveCriticalSection(&G.cs);
    logf_("ok", "Hosting on UDP %u-%u (%s)", G.cfg.port, G.cfg.port + 1,
          !strcmp(G.cfg.bind, "0.0.0.0") ? "every network of this PC" : G.cfg.bind);
@@ -686,6 +818,11 @@ void online_stop(void)
    G.stop_ev = NULL;
    InterlockedDecrement(&g_live);
    EnterCriticalSection(&G.cs);
+   if (G.dc_on)
+   {
+      rl_dirc_stop(&G.dc);                     /* UNREGISTER: the code is free at once */
+      G.dc_on = 0;
+   }
    closesocket(G.s[0]);
    closesocket(G.s[1]);
    G.s[0] = G.s[1] = INVALID_SOCKET;
@@ -792,6 +929,37 @@ void online_status_json(sb *b)
    sb_kv_str(b, "pub", G.pr_state == PR_OK ? G.pr_pub : "");
    sb_add(b, "}");
    sb_kv_str(b, "verdict", G.running ? verdict(G.up_state, G.up_wan, G.pr_state, G.pr_pub) : "");
+   /* the two codes a friend can type (GBAdhoc: Wireless > Online > Join with code) */
+   sb_key(b, "codes");
+   sb_add(b, "{");
+   if (G.running)
+   {
+      char inv[16] = "", inv_lan[16] = "";
+      const char *pub = upnp_ip_class(G.up_wan) == IPC_PUBLIC ? G.up_wan
+                      : G.pr_state == PR_OK && upnp_ip_class(G.pr_pub) == IPC_PUBLIC ? G.pr_pub : "";
+      uint32_t lan = first_lan_ip(G.cfg.bind[0] ? G.cfg.bind : "0.0.0.0");
+      if (pub[0])
+      {
+         uint32_t ip = inet_addr(pub);
+         if (inv_encode((const uint8_t *)&ip, G.cfg.port, 1, inv) != INV_OK)
+            inv[0] = '\0';
+      }
+      if (lan && inv_encode((const uint8_t *)&lan, G.cfg.port, 1, inv_lan) != INV_OK)
+         inv_lan[0] = '\0';
+      sb_kv_str(b, "room", G.home);
+      sb_kv_bool(b, "roomRegistered", G.dc_on && G.dc.state == DC_REGISTERED && !strcmp(G.dc.code, G.home));
+      sb_key(b, "directory");
+      sb_add(b, "{");
+      sb_kv_str(b, "name", G.pr_name);
+      sb_kv_str(b, "state", !G.dc_on ? "off" : G.dc.state == DC_REGISTERED ? "registered"
+                          : G.dc.state == DC_FAILED ? "failed" : "registering");
+      sb_kv_str(b, "error", G.dc_on ? G.dc.errtext : "");
+      sb_kv_num(b, "tries", G.dc_on ? G.dc.tries : 0);
+      sb_add(b, "}");
+      sb_kv_str(b, "invite", inv);
+      sb_kv_str(b, "inviteLan", inv_lan);
+   }
+   sb_add(b, "}");
    sb_key(b, "rooms");
    sb_add(b, "[");
    n = G.running && G.core ? relay_core_rooms(G.core, v, MAX_VIEW) : 0;
@@ -827,6 +995,8 @@ void online_status_json(sb *b)
          sb_kv_num(b, "ppsIn", relay_obs_pps_in(e, t * 1000u));
          sb_kv_num(b, "ppsOut", relay_obs_pps_out(e, t * 1000u));
          sb_kv_str(b, "path", e && e->direct ? "direct" : "relay");
+         sb_kv_str(b, "pathLabel", e && e->direct ? "Direct" : "Via host");   /* the mockup's words */
+         sb_kv_str(b, "pathLabel", e && e->direct ? "Direct" : "Via host");
          sb_add(b, "}");
       }
       sb_add(b, "]}");

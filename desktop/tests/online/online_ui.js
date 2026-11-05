@@ -72,8 +72,34 @@ for (const [name, o, title, shared] of cases) {
   check('link mode', h.includes('Link Cable'));
   check('waiting room says how long the code lasts', h.includes('10 minutes'));
   const d = O.roomsHTML(S({ rooms: [{ code: 'DRCT', mode: 'any', ageS: 9, joined: true, players: [{ slot: 0, nick: '', where: 'LAN', ip: 'x', nat: 'open', connS: 9, pingMs: -1, lossPct: -1, ppsIn: 1, ppsOut: 1, path: 'direct' }] }] }));
-  check('a direct pair says direct', d.includes('>direct<'));
+  check('a direct pair says Direct', d.includes('>Direct<'));
+  check('a relayed pair says Via host', h.includes('>Via host<'));
   check('no rooms', O.roomsHTML(S({})).includes('No rooms yet'));
+}
+// the two codes (the mockup's "Tell your friend" card)
+{
+  const codes = { room: 'KQTR', roomRegistered: true, directory: { name: 'relay.rayquaza.ca:27420', state: 'registered', error: '', tries: 0 }, invite: 'SC07-2AGV', inviteLan: 'R2M0-251N-XYZ' };
+  const h = O.statusHTML(S({ codes }), {});
+  check('codes: room code shown big', h.includes('class="big">KQTR<'));
+  check('codes: looked up on the directory, no game traffic', /Lookups only; no game traffic/.test(h));
+  check('codes: invite code shown with copy', h.includes('SC07-2AGV') && h.includes('data-copy="SC07-2AGV"'));
+  check('codes: LAN invite offered', h.includes('R2M0-251N-XYZ'));
+  check('codes: Join with code on the PSP', /Join with code/.test(h));
+  check('codes: no config.ini editing any more', !/online_relay/.test(h));
+  check('codes: room first when the directory works', h.indexOf('Room code') < h.indexOf('Invite code'));
+  check('codes: the public address still hidden', !h.includes('203.0.113.7'));
+  const down = S({ codes: Object.assign({}, codes, { roomRegistered: false, directory: { name: 'relay.rayquaza.ca:27420', state: 'failed', error: 'directory full', tries: 9 } }) });
+  const hd = O.statusHTML(down, {});
+  check('directory down: the invite code comes first', hd.indexOf('Invite code') < hd.indexOf('Room code'));
+  check('directory down: says why', /directory full/.test(hd));
+  check('directory down: the banner says share the invite', /directory is unreachable/.test(O.describe(down).title));
+  const off = O.statusHTML(S({ codes: Object.assign({}, codes, { roomRegistered: false, directory: { state: 'off' } }) }), {});
+  check('directory off: the invite code comes first', off.indexOf('Invite code') < off.indexOf('Room code'));
+  const lan = O.statusHTML(S({ verdict: 'lan-only', upnp: { state: 'none', wan: '' }, codes }), {});
+  check('this network only: says outside players cannot reach', /players outside cannot reach this PC/.test(lan));
+  const nopub = O.statusHTML(S({ codes: Object.assign({}, codes, { invite: '' }) }), {});
+  check('no public address: no internet invite, says why', /no invite code for the internet/.test(nopub));
+  check('directory setting in Settings', /List the room in the directory/.test(O.html(S({ codes }), null, {})));
 }
 // network check
 {

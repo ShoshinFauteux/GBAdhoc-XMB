@@ -21,6 +21,11 @@
       case 'open': {
         const pub = rel.state === 'ok' && rel.pub ? rel.pub : wan;
         let text = `Players on the internet can reach this PC at its public address${pub ? ' (shown below)' : ''}.`;
+        const dir = (st.codes && st.codes.directory) || {};
+        if (dir.state === 'failed')
+          return { tone: 'warn', title: 'Hosting on this PC · the directory is unreachable',
+            text: `${dir.name || SHARED} did not take the room code${dir.error ? ' (' + dir.error + ')' : ''}, so nobody can look it up right now. The invite code needs no server: share that instead. The room keeps trying to register every 60 s.`, shared: false };
+        text += ' Players anywhere can join with the room code or the invite code.';
         if (rel.state === 'ok') text += ' The shared relay sees the same address.';
         else if (rel.state === 'noanswer' || rel.state === 'nodns') text += ' Not verified from outside: the shared relay did not answer.';
         return { tone: 'ok', title: `Hosting on this PC · ${ports(st)} open via UPnP`, text, shared: false };
@@ -40,9 +45,40 @@
     return { tone: 'warn', title: "Your router didn't open a port", text: `No UPnP router answered. Turn on UPnP in the router's settings, or forward ${ports(st)} to ${(st.lan || [])[0] || 'this PC'} by hand. Until then only PSPs on this network can join.`, shared: true };
   }
 
+  // The two codes a friend types on the PSP (Wireless › Online › Join with code), as the
+  // mockup draws them: the room code via the directory, the invite code with no server.
+  // When the directory cannot be used the invite code comes first.
+  function codesHTML(st, view) {
+    const cd = (st && st.codes) || {}, dir = cd.directory || {};
+    if (!cd.room) return '';
+    const outside = st.verdict === 'open';
+    const dirOff = dir.state === 'off', dirDown = dir.state === 'failed' || (dir.state === 'registering' && (dir.tries || 0) >= 3);
+    const roomNote = dirOff ? 'The directory is off in Settings: only PSPs on this network that point at this PC can use these four letters. Share the invite code.'
+      : dir.state === 'registering' && !dirDown ? `Registering on ${esc(dir.name || SHARED)}…`
+      : dirDown ? `Cannot be looked up: the directory${dir.error ? ' refused it (' + esc(dir.error) + ')' : ' is unreachable'}. The invite code needs no server.`
+      : !outside && st.verdict !== 'checking' ? 'Registered, but players outside cannot reach this PC (see above). PSPs on this network can use it.'
+      : `Looked up on ${esc(dir.name || SHARED)}. Lookups only; no game traffic.`;
+    const inv = cd.invite || '', lanInv = cd.inviteLan || '';
+    const len = s => s.replace(/-/g, '').length;
+    const room = `<div class="codebox ${dirOff || dirDown || !cd.roomRegistered ? 'off' : ''}"><div class="lbl">Room code <span class="hint" title="Four letters. The PSP asks the directory where room ${esc(cd.room)} is.">4 letters · via the directory</span></div>
+        <div class="big">${esc(cd.room)}</div><div class="sub">${roomNote}</div>
+        <div class="acts"><button class="b sm" data-copy="${esc(cd.room)}">Copy</button></div></div>`;
+    const invite = `<div class="codebox"><div class="lbl">Invite code <span class="hint" title="This PC's address and port plus a check character, Crockford base32 (no I, L, O or U).">${inv ? len(inv) : 8} characters · no server</span></div>
+        <div class="big inv">${inv ? esc(inv) : '—'}</div><div class="sub">${inv ? (view.showIp ? 'Encodes this PC\'s public address' : 'Encodes this PC\'s public address (hidden above)') + `${len(inv) === 11 ? ' and its port' : ', the default port,'} and a check character. No server needed.` : 'No public address found yet, so there is no invite code for the internet.'}</div>
+        <div class="acts">${inv ? `<button class="b sm primary" data-copy="${esc(inv)}">Copy</button>` : ''}</div>
+        ${lanInv ? `<div class="sub lan">For a PSP on this network: <span class="mono">${esc(lanInv)}</span> <button class="b sm" data-copy="${esc(lanInv)}">Copy</button></div>` : ''}</div>`;
+    const order = dirOff || dirDown ? [invite, room] : [room, invite];
+    return `<div class="sec codes"><h3>Tell your friend</h3><div class="coderow">${order.join('')}</div>
+      <div class="srow"><div class="t"><b>On their PSP</b><small class="p">Wireless › Online › <b>Join with code</b>, then type either code (one PSP creates the room with it, the other joins). GBAdhoc with online play, Settings › Online play on. PSPs on this network join the same way.</small></div></div></div>`;
+  }
+
   function fmtDur(s) { s = Math.max(0, Math.floor(s || 0)); if (s < 60) return s + ' s'; if (s < 3600) return Math.floor(s / 60) + ' min ' + (s % 60) + ' s'; return Math.floor(s / 3600) + ' h ' + Math.floor(s % 3600 / 60) + ' min'; }
+  function pathCell(p) {
+    return p.path === 'direct' ? '<span class="pill ok" title="The two PSPs exchange game traffic directly; this PC only keeps the room">Direct</span>'
+      : '<span class="pill warn" title="No direct path between them, so this PC forwards every packet">Via host</span>';
+  }
   function pingCell(p) {
-    if (p.path === 'direct') return '<span class="pill ok" title="These two PSPs found a direct path; this PC only keeps the room">direct</span>';
+    if (p.path === 'direct') return '<span class="dim" title="Game traffic goes between the PSPs, not to this PC">—</span>';
     if (p.pingMs < 0) return '<span class="dim">—</span>';
     const tone = p.pingMs <= 60 ? 'ok' : p.pingMs <= 150 ? 'warn' : 'bad';
     return `<span class="pill ${tone}">${p.pingMs} ms</span>`;
@@ -52,10 +88,10 @@
 
   function roomsHTML(st) {
     const rooms = (st && st.rooms) || [];
-    if (!rooms.length) return `<div class="srow"><div class="t"><b>No rooms yet</b><small class="p">When a PSP pointed at this PC creates a room, its code and players appear here.</small></div></div>`;
+    if (!rooms.length) return `<div class="srow"><div class="t"><b>No rooms yet</b><small class="p">When a PSP creates the room with this PC's room code or invite code, its players appear here.</small></div></div>`;
     return rooms.map(r => `<div class="oroom" data-code="${esc(r.code)}"><div class="orh"><span class="ocode">${esc(r.code)}</span><span class="t"><b>${r.players.length} ${r.players.length === 1 ? 'player' : 'players'}</b><small class="p">${esc(MODE[r.mode] || 'any link')} · open ${fmtDur(r.ageS)}${r.joined ? '' : ' · waiting for a guest (the code lasts 10 minutes)'}</small></span><button class="b sm" data-copy="${esc(r.code)}">Copy code</button></div>
-      <table class="otab"><thead><tr><th>Player</th><th>From</th><th>Ping to this PC</th><th>Loss</th><th>Packets/s in · out</th><th>Connected</th></tr></thead><tbody>
-      ${r.players.map(p => `<tr data-slot="${p.slot}"><td><b>${p.slot === 0 ? 'Host' : 'Guest ' + p.slot}</b>${p.nick ? ' · ' + esc(p.nick) : ''}</td><td>${esc(p.where)}<small> ${esc(p.ip)}</small></td><td>${pingCell(p)}</td><td>${lossCell(p)}</td><td class="mono">${p.ppsIn} · ${p.ppsOut}</td><td>${fmtDur(p.connS)}</td></tr>`).join('')}
+      <table class="otab"><thead><tr><th>Player</th><th>From</th><th>Path</th><th>Ping to this PC</th><th>Loss</th><th>Packets/s in · out</th><th>Connected</th></tr></thead><tbody>
+      ${r.players.map(p => `<tr data-slot="${p.slot}"><td><b>${p.slot === 0 ? 'Host' : 'Guest ' + p.slot}</b>${p.nick ? ' · ' + esc(p.nick) : ''}</td><td>${esc(p.where)}<small> ${esc(p.ip)}</small></td><td>${pathCell(p)}</td><td>${pingCell(p)}</td><td>${lossCell(p)}</td><td class="mono">${p.ppsIn} · ${p.ppsOut}</td><td>${fmtDur(p.connS)}</td></tr>`).join('')}
       </tbody></table></div>`).join('');
   }
 
@@ -85,8 +121,9 @@
         <div class="srow"><div class="t"><b>Reachable from</b><small class="p">PSPs on this network${lan.length ? ': ' + lan.map(ip => `<span class="mono">${esc(relayAddr(ip, st))}</span>`).join(', ') : ''}</small></div><span class="pill ${reach[0]}">${reach[1]}</span>${lan.length ? `<button class="b sm" data-copy="${esc(relayAddr(lan[0], st))}">Copy</button>` : ''}</div>
         ${pub ? `<div class="srow"><div class="t"><b>Public address</b><small>${view.showIp ? esc(relayAddr(pub, st)) : 'hidden · the guest sees this address'}</small></div><button class="b sm" data-showpub>${view.showIp ? 'Hide' : 'Show'}</button><button class="b sm" data-copypub>Copy</button></div>` : ''}`;
     }
-    const steps = st && st.running ? `<div class="srow"><div class="t"><b>On the PSPs</b><small class="p">GBAdhoc 4.6.0-beta.4 or later, Settings › Online play on. In GBAdhoc's <span class="mono">config.ini</span> on each PSP, set <span class="mono">online_relay = ${esc(relayAddr(lan[0] || 'this PC’s address', st))}</span> for a PSP on this network${pub && st.verdict === 'open' ? ` or <span class="mono">online_relay = ${view.showIp ? esc(relayAddr(pub, st)) : 'the public address'}</span> for a player on the internet` : ''}. Then one PSP opens Wireless › Online › Create room and the other joins with its code.</small></div></div>` : '';
+    const steps = '';   // the PSPs now join by code: the "Tell your friend" card (codesHTML)
     return `<div class="note ${d.tone || 'info'} onote"><b>${esc(d.title)}</b><div>${esc(d.text)}${d.shared ? ' ' + esc(sharedTip()) : ''}</div></div>
+      ${st && st.running ? codesHTML(st, view) : ''}
       <div class="sec"><h3>This PC</h3>${rows || `<div class="srow"><div class="t"><b>Ports</b><small>${esc(ports(st))} (UDP), opened on the router with UPnP while you host and closed when you stop</small></div><span class="pill">Off</span></div>`}${steps}</div>
       <div class="sec"><h3>Rooms</h3>${st && st.running ? roomsHTML(st) : `<div class="srow"><div class="t"><b>Not hosting</b><small class="p">Rooms appear here while this PC hosts.</small></div></div>`}</div>`;
   }
@@ -108,8 +145,9 @@
         <div id="on-live">${statusHTML(st, view)}</div>
         <div class="sec"><h3>Network check</h3><div id="on-checkres">${checkHTML(check, view.checking)}</div></div>
         <div class="sec"><h3>Settings</h3>
-          <div class="srow"><div class="t"><b>Port</b><small class="p">UDP, and the next one up for the address check. GBAdhoc's default is 27420</small></div><input class="num" id="on-port" type="number" min="1024" max="65534" value="${esc(view.port || 27420)}" ${running ? 'disabled' : ''}></div>
+          <div class="srow"><div class="t"><b>Port</b><small class="p">UDP, and the next one up for the address check. GBAdhoc's default is 27420; another port makes the invite code 11 characters (it has to carry the port)</small></div><input class="num" id="on-port" type="number" min="1024" max="65534" value="${esc(view.port || 27420)}" ${running ? 'disabled' : ''}></div>
           <div class="srow"><div class="t"><b>Open the ports with UPnP</b><small class="p">Asks your router to forward them to this PC while you host, and removes them when you stop</small></div><span class="tog ${view.upnp !== false ? 'on' : ''}" id="on-upnp" ${running ? 'aria-disabled="true"' : ''}></span></div></div>
+          <div class="srow"><div class="t"><b>List the room in the directory</b><small class="p">Registers "this room code is at this PC" on ${esc(SHARED)} so a four-letter code works from anywhere. Off, only the invite code works. The directory stores the code and this PC's address while you host; no names, no game traffic. Default on (the owner may change it).</small></div><span class="tog ${view.directory !== false ? 'on' : ''}" id="on-dir" ${running ? 'aria-disabled="true"' : ''}></span></div>
         <div class="sec"><h3>Before you host</h3>
           <div class="srow"><div class="t"><b>No game files</b><small class="p" id="on-nofiles">${esc(NO_FILES)}</small></div></div>
           <div class="srow"><div class="t"><b>Your address</b><small class="p">A guest on the internet connects to this PC, so they see its public IP address (with the shared relay, nobody sees anyone's).</small></div></div>
@@ -123,5 +161,5 @@
   // the address the Copy button of the public row copies (kept out of the page until asked)
   function publicAddr(st) { const up = (st && st.upnp) || {}, rel = (st && st.relay) || {}; const pub = rel.state === 'ok' && rel.pub ? rel.pub : up.wan; return pub ? relayAddr(pub, st) : ''; }
 
-  root.ONLINE = { describe, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, NO_FILES, SHARED };
+  root.ONLINE = { describe, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, codesHTML, NO_FILES, SHARED };
 })(typeof window !== 'undefined' ? window : globalThis);

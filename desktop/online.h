@@ -10,8 +10,9 @@
  * Environment (tests and experts):
  *   XMB_ONLINE_BIND=IP       bind address (default 0.0.0.0; the tests use 127.0.0.1)
  *   XMB_UPNP_SSDP=IP:PORT    where M-SEARCH goes (default 239.255.255.250:1900)
- *   XMB_SHARED_RELAY=H:P|off the shared relay used for the address check
+ *   XMB_SHARED_RELAY=H:P|off the shared relay: the address check and the directory
  *                            (default relay.rayquaza.ca:27420)
+ *   XMB_DIRECTORY=off        never register the room code with the directory
  */
 #ifndef XMB_ONLINE_H
 #define XMB_ONLINE_H
@@ -26,6 +27,11 @@ typedef struct
    char ssdp[64];          /* "" = XMB_UPNP_SSDP or the multicast group */
    char shared[128];       /* "" = XMB_SHARED_RELAY or the default; "off" = no check */
    unsigned max_rooms;     /* 0 = 16 */
+   /* 1 = register this PC's room code with the shared relay's directory, so
+    * PSPs anywhere join with four letters (GBAdhoc docs/ONLINE-TUNNEL.md,
+    * "Desktop hosts and discovery").  The owner's default: ON (host.c);
+    * XMB_DIRECTORY=off overrides.  Off, only the invite code works. */
+   int directory;
 } online_cfg;
 
 void online_init(void);

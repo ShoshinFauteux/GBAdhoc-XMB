@@ -231,21 +231,34 @@ asks your router to open its ports with UPnP while you host.
   <sub><b>The Online tab, hosting.</b> Captured from the real app in a loopback test: the router is a simulated UPnP device and the two players are GBAdhoc's simulated test consoles.</sub>
 </p>
 
-**What the tab shows:** Host / Stop; the ports it listens on, the router's answer and where the
-room can be reached from (this network only, or the internet too); the public address, hidden
-until you click *Show*; each room's code and its players, with the ping from each PSP to this
-PC, the loss (the share of the session's data that had to be resent) and packets per second; a
-*Network check* (your router, its internet address and what kind of address it is, and how the
-shared relay sees this PC); and a log of rooms opening, players joining and leaving, and refusals.
+**What the tab shows:** Host / Stop; **the two codes to give a friend** (below); the ports it
+listens on, the router's answer and where the room can be reached from (this network only, or
+the internet too); the public address, hidden until you click *Show*; the room and its players,
+with the path between them (*Direct* when the two PSPs reach each other, *Via host* when this PC
+forwards for them), the ping from each PSP to this PC, the loss and packets per second; a
+*Network check*; and a log of the room, players joining and leaving, the directory, and refusals.
+
+**Two codes.** Hosting gives this PC one room and two ways to name it:
+
+- the **room code**, four letters (`KQTR`). The app lists it in a small directory on the shared
+  server (`relay.rayquaza.ca`): the PSP asks the directory where the room is, then talks to this
+  PC. The directory only answers that lookup (about 100 bytes per player, and about 3.5 KB per
+  hour the PC hosts for the refreshes); no game traffic ever goes through it.
+- the **invite code**, eight characters (`SC07-2AGV`; eleven when the port is not GBAdhoc's
+  default 27420). It holds this PC's public address and a check character, so it needs no server
+  at all: when the directory is down, it is the one to share. Crockford base32 (no I, L, O or
+  U); the PSP forgives case, dashes and O/0, I/L/1, and catches mistypes. A second, LAN invite
+  code is shown for PSPs on this network.
 
 **To play:**
 
 1. On the PC, open **Online** and click **Host online room**. Windows may ask whether GBAdhoc
    XMB may use the network: allow it on the network you are on.
-2. On each PSP (GBAdhoc 4.6.0-beta.4 or later, Settings › Online play on), set `online_relay`
-   in GBAdhoc's `config.ini` to the address the tab shows: this PC's LAN address for a PSP at
-   home, the public address for the player on the internet.
-3. One PSP opens Wireless › Online › Create room; the other joins with the four-letter code.
+2. On each PSP (a GBAdhoc build with online play, Settings › Online play on): Wireless › Online ›
+   **Join with code**, and type either code. One PSP creates the room with it, the other joins.
+   PSPs on this network do the same.
+3. The two PSPs try to reach each other directly (a hole punch); when their routers do not
+   allow it, this PC forwards for them.
 
 **The honest caveats:**
 
@@ -256,8 +269,9 @@ shared relay sees this PC); and a log of rooms opening, players joining and leav
   needs nothing from your router) instead. PSPs on your own network can still join.
 - **The PC must stay on.** The room lasts while the app is open and hosting. The app keeps the
   PC from sleeping while it hosts; closing it, or the lid, ends the room.
-- **The guest sees the host's IP address.** A player on the internet connects to your PC, so
-  they learn its public IP. With the shared relay, nobody sees anyone's address.
+- **The guest sees the host's IP address, and the invite code contains it.** A player on the
+  internet connects to your PC, so they learn its public IP; share the invite code only with
+  people you would tell your address. With the shared relay, nobody sees anyone's address.
 - **The firewall is yours.** The app never changes Windows Firewall settings. If you refused
   the prompt, allow GBAdhoc XMB in Windows Security › Firewall & network protection › Allow an
   app through firewall.
@@ -271,10 +285,20 @@ packets and bytes, rooms that expire, and fixed-size tables. The ports are open 
 host; *Stop* removes the router's mappings. A UPnP answer is only followed to an address on your
 own network.
 
-**Known limits.** A joining PSP has to be pointed at this PC by its address (`online_relay`);
-the shared relay does not yet redirect a room code to a desktop host. The reachability check
+**Known limits.** One room per hosting PC can be found by code (up to five players). A PSP at home behind the same
+router as this PC plays *via host* with a remote player (this PC is on its LAN, so that costs a
+few ms). An invite code is valid while this PC's public address and port stay the same. The
+directory entry lives 3 minutes after the PC stops refreshing it (a crash), or ends at once on
+*Stop*. The reachability check
 confirms the router's public address with the shared relay but cannot test inbound traffic from
 outside. NAT-PMP/PCP routers are not tried, only UPnP-IGD.
+
+**Still for the owner to decide** (each a simple setting or constant): the code formats (the
+long invite form uses a CRC-7 check, not the mockup's truncated CRC-8, which missed some single
+typos), whether the directory is on by default (it is: Settings › *List the room in the
+directory*), whether invite codes should expire, whether the public address stays hidden by
+default (it does), whether to add a QR code (not built), and whether this PC should relay when
+the direct path fails (it always does today; turning it off needs a change in the relay core).
 
 ## Pre-release: more work before 1.0
 
