@@ -1,0 +1,18 @@
+# build outputs
+*.o
+*.d
+*.elf
+*.map
+*.prx
+PARAM.SFO
+EBOOT.PBP
+desktop/build/
+desktop/dist/
+psp/gen/.inst/
+# never commit games, saves or test cards
+*.gba
+*.gb
+*.gbc
+*.sav
+*.srm
+*.ss[0-9]

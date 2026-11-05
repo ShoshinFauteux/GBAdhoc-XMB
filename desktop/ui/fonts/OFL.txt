@@ -1,0 +1,9 @@
+Inter is licensed under the SIL Open Font License, Version 1.1.
+Copyright (c) 2016-present The Inter Project Authors (https://github.com/rsms/inter)
+
+JetBrains Mono is licensed under the SIL Open Font License, Version 1.1.
+Copyright 2020 The JetBrains Mono Project Authors (https://github.com/JetBrains/JetBrainsMono)
+
+Both fonts here are the Latin subsets Google Fonts serves (Inter variable
+400-800, JetBrains Mono 500).  They are embedded in GBAdhoc-XMB.exe with the
+UI.  Full licence text: ../../../LICENSES/OFL-1.1.txt

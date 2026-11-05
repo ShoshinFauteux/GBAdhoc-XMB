@@ -1,0 +1,54 @@
+/* GBAdhoc XMB desktop: the design's window is now the real window.
+   desktop.css is design A's, unchanged; this file adapts it to the app. */
+@font-face{font-family:"Inter";font-style:normal;font-weight:100 900;font-display:block;src:url(fonts/Inter-latin.woff2) format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:500;font-display:block;src:url(fonts/JetBrainsMono-500-latin.woff2) format("woff2")}
+
+html,body{height:100%;overflow:hidden}
+body{display:block;background:#0f1230}
+body.light{background:#f3f3f8}
+.win{width:100vw;height:100vh;border-radius:0;box-shadow:none}
+.drawer{bottom:26px}
+
+/* card rows line up: the meta line sits at the foot of every card
+   (review r10 point 4: one-line titles left an empty line above it) */
+.card{display:flex;flex-direction:column}
+.card .tile{flex:0 0 auto}
+.card .meta{flex:1;display:flex;flex-direction:column}
+.card .meta h3{min-height:0}
+.card .meta .s{margin-top:auto;padding-top:8px}
+
+/* the rail's PSP card: more than one PSP plugged in */
+.dev .pick{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.dev .pick span{font-size:10.5px;font-weight:800;padding:2px 7px;border-radius:5px;background:var(--hover);color:var(--text-3);cursor:pointer}
+.dev .pick span.on{background:var(--accent);color:var(--accent-ink)}
+.dev .pick span:hover{color:var(--text)}
+
+/* first run / no PSP */
+.waiting{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;height:100%;color:var(--text-3);text-align:center;padding:0 40px}
+.waiting h2{margin:6px 0 0;color:var(--text);font-size:19px;font-weight:800}
+.waiting p{margin:0;max-width:440px;line-height:1.5;font-size:13px}
+.waiting ol{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;text-align:left;font-size:12.5px;color:var(--text-2)}
+.waiting ol li{display:flex;gap:10px;align-items:center}
+.waiting ol li b{width:20px;height:20px;border-radius:50%;background:var(--sel);color:var(--text);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:0 0 auto}
+.waiting .psp{width:150px;height:62px;border-radius:31px;background:linear-gradient(180deg,#232856,#10132d);box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),0 12px 30px rgba(0,0,0,.4);position:relative}
+.waiting .psp::before{content:"";position:absolute;left:38px;right:38px;top:10px;bottom:10px;border-radius:4px;background:linear-gradient(135deg,#4a3ab0,#1e1a6e)}
+.waiting .psp::after{content:"";position:absolute;left:50%;bottom:-16px;width:2px;height:16px;background:var(--text-4);animation:usb 1.6s ease-in-out infinite}
+@keyframes usb{0%,100%{opacity:.25}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.waiting .psp::after{animation:none}}
+
+/* a banner's action button keeps the banner's own colour */
+.banner .b.sm{height:24px}
+.drawer .dh .b + .b{margin-left:0}
+.qr .im .ic0.card{transform:scale(.25)}
+.srow .lnk{color:var(--accent);font-weight:700;cursor:pointer}
+.empty .b{margin-top:12px}
+
+/* Windows draws classic 17px scrollbars; the design assumed overlay ones */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bd-2);border-radius:5px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:var(--text-4);background-clip:padding-box;border:2px solid transparent}
+::-webkit-scrollbar-corner{background:transparent}
+.insp .sc{overflow-x:hidden}
+/* a long status never pushes the badge out of the card */
+.card .meta .s span:not(.badge):not(.sys){min-width:0;overflow:hidden;text-overflow:ellipsis}

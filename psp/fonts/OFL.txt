@@ -1,0 +1,8 @@
+Inter is licensed under the SIL Open Font License, Version 1.1.
+Copyright (c) 2016-present The Inter Project Authors
+https://github.com/rsms/inter
+Full licence text: ../../LICENSES/OFL-1.1.txt
+
+InterVariable.ttf is the SOURCE for tools/bake_fonts.py, which produces
+gen/xmb_fonts.h.  The TTF does not ship in the EBOOT; only the baked
+8-bit coverage atlases do.

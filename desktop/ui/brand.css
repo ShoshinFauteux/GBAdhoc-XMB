@@ -1,0 +1,36 @@
+/* GBAdhoc XMB — design tokens shared by the PSP app, the desktop app and the overview.
+   Identity: deep indigo, the GBAdhoc rainbow as the one accent system, big clear art. */
+:root {
+  --ink-0: #0a0c1e;   /* deepest */
+  --ink-1: #10132d;
+  --ink-2: #181c3f;
+  --ink-3: #232856;
+  --ink-4: #323a73;
+  --line: rgba(255,255,255,.10);
+  --line-2: rgba(255,255,255,.18);
+  --fg: #f2f1ec;
+  --fg-2: #c3c5d8;
+  --fg-3: #8e92b2;
+  --fg-4: #5d6188;
+
+  /* the GBAdhoc rainbow, from the logo */
+  --r-violet: #8d7bf3;
+  --r-lime:   #8ac32a;
+  --r-pink:   #ef3f6d;
+  --r-amber:  #f4bb20;
+  --r-teal:   #1fb5b0;
+  --r-purple: #7f55d6;
+  --rainbow: linear-gradient(90deg,#8d7bf3 0 14%,#8ac32a 14% 36%,#ef3f6d 36% 50%,#f4bb20 50% 61%,#8ac32a 61% 72%,#1fb5b0 72% 85%,#7f55d6 85% 100%);
+
+  /* semantic */
+  --accent: var(--r-violet);
+  --accent-ink: #0c0b20;
+  --ok: var(--r-lime);
+  --warn: var(--r-amber);
+  --bad: var(--r-pink);
+  --info: var(--r-teal);
+
+  --radius: 10px;
+  --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+}

@@ -1,0 +1,4 @@
+# build outputs (see also the top-level .gitignore)
+xmbapp
+# fontTools instances made by tools/bake_fonts.py
+gen/.inst/

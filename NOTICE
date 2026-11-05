@@ -1,0 +1,23 @@
+GBAdhoc XMB
+Copyright (C) 2026 ShoshinFauteux and the GBAdhoc XMB contributors
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.  See LICENSE.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.
+
+It includes or links third-party software under other licences: stb_image and
+stb_image_write (public domain or MIT), Inter and JetBrains Mono (SIL OFL 1.1),
+Microsoft's WebView2 header (BSD-style), Mbed TLS (Apache-2.0 or
+GPL-2.0-or-later), zlib (zlib licence), PSPSDK and newlib (BSD-style), and the
+psp-cfw-sdk import stubs (GPL-3.0).  Details and licence texts: THIRD_PARTY.md
+and the LICENSES folder.
+
+GBAdhoc XMB contains no games, BIOS files or game artwork.  "PlayStation",
+"PSP" and "XMB" are trademarks of Sony Interactive Entertainment; "Game Boy"
+and "Game Boy Advance" are trademarks of Nintendo.  This project is not
+affiliated with or endorsed by either company.

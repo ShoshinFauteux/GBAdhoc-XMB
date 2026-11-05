@@ -1,0 +1,1 @@
+WebView2.h from the Microsoft.Web.WebView2 NuGet package 1.0.2903.40 (BSD-style licence, LICENSE.txt). Header only: GBAdhoc XMB loads the installed WebView2 runtime itself (app/wv2.c), no WebView2Loader.dll.
