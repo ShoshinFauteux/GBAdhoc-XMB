@@ -9,6 +9,7 @@
   const win = $('win');
   const ui = { view: 'lib', filter: 'all', q: '', sel: new Set(), open: null, scanning: true, scanMsg: '', scanP: 0, scanFile: '' };
   const prefs = X.prefs;
+  let onSt = null, onCheck = null, onTimer = null; // the Online tab (below)
   let hello = null, netInfo = null, cacheInfo = null, cardDirs = [], queueState = null, lastDevice = null;
 
   // ---------- banners ----------
@@ -56,8 +57,9 @@
       <a data-v="attn" class="${ui.view === 'attn' ? 'on' : ''}"><i class="attn"></i>Needs attention<span class="n">${counts.attn}</span></a>
       <div class="cap">App</div>
       <a data-v="art" class="${ui.view === 'art' ? 'on' : ''}"><i class="art"></i>Art sources</a>
+      <a data-v="online" class="${ui.view === 'online' ? 'on' : ''}" id="nav-online"><i class="onl"></i>Online${onSt && onSt.running ? '<span class="n live">Live</span>' : ''}</a>
       <a data-v="settings" class="${ui.view === 'settings' ? 'on' : ''}"><i class="set"></i>Settings</a>`;
-    $('nav').querySelectorAll('a').forEach(a => a.addEventListener('click', () => { ui.view = a.dataset.v; ui.filter = 'all'; render(); if (ui.view === 'art') refreshNet(); if (ui.view === 'settings') refreshSettings(); }));
+    $('nav').querySelectorAll('a').forEach(a => a.addEventListener('click', () => { ui.view = a.dataset.v; ui.filter = 'all'; render(); if (ui.view === 'art') refreshNet(); if (ui.view === 'settings') refreshSettings(); if (ui.view === 'online') pollOnline(); }));
   }
 
   // ---------- main ----------
@@ -75,6 +77,7 @@
     banners(); renderRail(); statusbar();
     document.body.classList.toggle('light', win.dataset.theme === 'light');
     const m = $('main');
+    if (ui.view === 'online') return renderOnline(m);
     if (ui.scanning) { m.innerHTML = `<div class="scanning"><div class="arc"><i></i><i></i><i></i><i></i><i></i></div><div>${esc(ui.scanMsg || 'Scanning the Memory Stick…')}</div><div class="f">${esc(ui.scanFile || '')}</div><div class="pb"><b style="width:${ui.scanP}%"></b></div></div>`; return; }
     if (ui.view === 'settings') return renderSettings(m);
     if (ui.view === 'art') return renderArt(m);
@@ -117,7 +120,7 @@
   function statusbar() {
     const real = X.games.filter(g => !g.orphan); const rec = real.filter(g => g.recognised).length;
     const net = X.scenario.offline ? 'Offline' : X.scenario.rateLimited ? 'GitHub rate limit' + (X.scenario.rateReset ? ' · resets ' + esc(X.scenario.rateReset) : '') : 'libretro-thumbnails · GBAdhoc-heroart reachable';
-    $('statusbar').innerHTML = `<span><b>${real.length}</b> ROMs in ${Math.max(1, X.storage.folders.length)} ${X.storage.folders.length > 1 ? 'folders' : 'folder'} · <b>${rec}</b> recognised · <b>${real.length - rec}</b> not</span><span><b>${X.games.filter(g => g.entry).length}</b> entries in the XMB</span><span class="sp"></span><span>${net}</span><span>${connected() ? esc(X.where()) + ' · ' + X.fmtMB(X.freeMB()) + ' free' : 'No PSP'}</span>`;
+    $('statusbar').innerHTML = `<span><b>${real.length}</b> ROMs in ${Math.max(1, X.storage.folders.length)} ${X.storage.folders.length > 1 ? 'folders' : 'folder'} · <b>${rec}</b> recognised · <b>${real.length - rec}</b> not</span><span><b>${X.games.filter(g => g.entry).length}</b> entries in the XMB</span><span class="sp"></span>${onSt && onSt.running ? `<span class="onl"><b>Hosting online</b> · ${onSt.rooms.length} ${onSt.rooms.length === 1 ? 'room' : 'rooms'}</span>` : ''}<span>${net}</span><span>${connected() ? esc(X.where()) + ' · ' + X.fmtMB(X.freeMB()) + ' free' : 'No PSP'}</span>`;
   }
 
   // ---------- inspector ----------
@@ -390,7 +393,7 @@
         <div class="srow"><div class="t"><b>GBAdhoc</b><small>${connected() ? esc(X.where()) + '/' + esc(X.storage.gbadhoc) + (X.storage.installTitle ? ' · ' + esc(X.storage.installTitle) : '') : 'No PSP connected'}</small></div><span class="pill ${connected() && !X.scenario.noInstall ? 'ok' : 'bad'}">${connected() ? (X.scenario.noInstall ? 'Not found' : 'Found') : 'No PSP'}</span></div>
         <div class="srow"><div class="t"><b>Launcher</b><small class="p">Every entry gets the same 130 KB launcher; updating GBAdhoc updates every entry</small></div><span class="pill">1.0 · built in</span></div>
         <div class="srow"><div class="t"><b>Written straight through to the stick</b><small class="p">Every file is flushed as it is written and checked after, and an entry only appears in PSP/GAME once it is whole, so pulling the cable never leaves half an entry</small></div><span class="pill ok">Always</span></div></div>
-      <div class="sec"><h3>About</h3><div class="srow"><div class="t"><b>GBAdhoc XMB ${esc(hello ? hello.version : '0.1.0-beta.2')}</b><small class="p">A sibling of GBAdhoc. Box art: libretro-thumbnails (Named_Boxarts). Hero art: GBAdhoc-heroart. No-Intro names: libretro-database. WebView2 ${esc(hello ? hello.runtime : '')}.</small></div></div></div></div>`;
+      <div class="sec"><h3>About</h3><div class="srow"><div class="t"><b>GBAdhoc XMB ${esc(hello ? hello.version : '0.2.0-beta.1')}</b><small class="p">A sibling of GBAdhoc. Box art: libretro-thumbnails (Named_Boxarts). Hero art: GBAdhoc-heroart. No-Intro names: libretro-database. WebView2 ${esc(hello ? hello.runtime : '')}.</small></div></div></div></div>`;
     m.querySelectorAll('#palette button').forEach(b => b.addEventListener('click', () => { setPalette(b.dataset.p); prefs.palette = b.dataset.p; X.savePrefs(); render(); }));
     m.querySelectorAll('.tog[data-p]').forEach(t => t.addEventListener('click', () => { prefs[t.dataset.p] = !prefs[t.dataset.p]; X.savePrefs(); render(); }));
     m.querySelector('#region').addEventListener('change', e => { prefs.region = e.target.value; X.savePrefs(); });
@@ -413,6 +416,59 @@
         <div class="srow"><div class="t"><b>Downloaded art is kept there too</b><small class="p">so GBAdhoc's own Shelf and Marquee browsers show it as well</small></div></div></div></div>`;
     const c = m.querySelector('#contrib'); if (c) c.addEventListener('click', () => H.call('openUrl', { url: 'https://github.com/ShoshinFauteux/GBAdhoc-heroart' }));
   }
+
+  // ---------- online: host GBAdhoc's relay on this PC (online.js draws it) ----------
+  const O = window.ONLINE;
+  const onView = { port: 27420, upnp: true, showIp: false, logOpen: false, busy: false, checking: false };
+  function onPrefs() { const o = prefs.online || {}; if (o.port) onView.port = o.port; if (o.upnp === false) onView.upnp = false; }
+  function saveOnPrefs() { prefs.online = { port: onView.port, upnp: onView.upnp }; X.savePrefs(); }
+  function renderOnline(m) {
+    m.innerHTML = O.html(onSt, onCheck, onView);
+    m.querySelector('#on-host').addEventListener('click', () => (onSt && onSt.running ? stopHosting() : startHosting()));
+    m.querySelector('#on-check').addEventListener('click', () => netCheck());
+    const port = m.querySelector('#on-port');
+    port.addEventListener('change', () => { const v = parseInt(port.value, 10); if (v >= 1024 && v <= 65534) { onView.port = v; saveOnPrefs(); } else port.value = onView.port; });
+    m.querySelector('#on-upnp').addEventListener('click', () => { if (onSt && onSt.running) return; onView.upnp = !onView.upnp; saveOnPrefs(); render(); });
+    m.querySelector('#on-logbox').addEventListener('toggle', (e) => { onView.logOpen = e.target.open; });
+  }
+  // the live parts only, so the port field and the open log keep their state
+  function paintOnline() {
+    const live = $('on-live'); if (!live) return;
+    live.innerHTML = O.statusHTML(onSt, onView);
+    $('on-log').innerHTML = O.logHTML(onSt);
+    const pill = $('on-pill'); pill.textContent = onSt && onSt.running ? 'Hosting' : 'Not hosting'; pill.className = 'pill ' + (onSt && onSt.running ? 'ok' : '');
+  }
+  async function pollOnline() {
+    const was = !!(onSt && onSt.running);
+    try { onSt = await H.call('onlineStatus'); } catch (e) { return; }
+    if (was !== !!onSt.running) { render(); return; }
+    if (ui.view === 'online') paintOnline();
+    statusbar();
+  }
+  function onlineLoop() { clearInterval(onTimer); onTimer = setInterval(() => { if (ui.view === 'online' || (onSt && onSt.running)) pollOnline(); }, 1000); }
+  async function startHosting() {
+    onView.busy = true; render();
+    try { onSt = await H.call('onlineStart', { port: onView.port, upnp: onView.upnp }); toast(`Hosting on UDP ${onSt.port}-${onSt.port + 1}`, 'ok'); } catch (e) { toast(e.message, 'bad'); }
+    onView.busy = false; render();
+  }
+  async function stopHosting() {
+    onView.busy = true; render();
+    try { onSt = await H.call('onlineStop'); toast('Stopped hosting' + (onView.upnp ? '; the router ports are closed' : ''), 'ok'); } catch (e) { toast(e.message, 'bad'); }
+    onView.busy = false; render();
+  }
+  async function netCheck() {
+    onView.checking = true; render();
+    try { onCheck = await H.call('onlineCheck', { port: onView.port }); } catch (e) { toast(e.message, 'bad'); }
+    onView.checking = false; render();
+  }
+  $('main').addEventListener('click', (e) => {
+    const c = e.target.closest('[data-copy]');
+    if (c) { navigator.clipboard.writeText(c.dataset.copy).then(() => toast('Copied ' + c.dataset.copy, 'ok'), () => toast('Could not copy', 'bad')); return; }
+    if (e.target.closest('[data-copypub]')) { const v = O.publicAddr(onSt); if (v) navigator.clipboard.writeText(v).then(() => toast('Copied the public address', 'ok'), () => toast('Could not copy', 'bad')); return; }
+    if (e.target.closest('[data-showpub]')) { onView.showIp = !onView.showIp; paintOnline(); return; }
+    const sh = e.target.closest('[data-show]');
+    if (sh) { const row = sh.closest('.srow'); row.querySelectorAll('.secret').forEach(x => { x.textContent = x.textContent === 'hidden' ? x.dataset.secret : 'hidden'; }); sh.textContent = sh.textContent === 'Show' ? 'Hide' : 'Show'; }
+  });
 
   // ---------- scan ----------
   async function scan() {
@@ -482,6 +538,7 @@
     if (!Array.isArray(prefs.folders)) prefs.folders = [];
     if (st.queue && st.queue.ids && st.queue.ids.length) { queueState = st.queue; queueState.paused = true; }
     $('ver').textContent = 'GBAdhoc XMB ' + hello.version;
+    onPrefs(); onlineLoop(); pollOnline();
     setPalette(prefs.palette);
     setTheme(prefs.theme || (hello.dark ? 'dark' : 'light'));
     X.netStatus().then(n => { netInfo = n; render(); });
@@ -500,6 +557,7 @@
     const g = X.games.find(x => want && (X.state[x.id].title + ' ' + x.file).toLowerCase().includes(want)) || X.games[0];
     if (demo[1] === 'light') setTheme('light');
     if (demo[1] === 'settings') { ui.view = 'settings'; refreshSettings(); }
+    if (demo[1] === 'online') { ui.view = 'online'; pollOnline(); }
     if (demo[1] === 'art') { ui.view = 'art'; refreshNet(); }
     if (demo[1] === 'xmb') ui.view = 'xmb';
     if (demo[1] === 'attn') ui.view = 'attn';
@@ -512,6 +570,6 @@
     if (demo[1] === 'queue') runQueue(X.games.filter(x => x.recognised && !x.entry && !x.orphan), 'make', 0, false);
   }
 
-  window.DESK = { ui, render, setPalette, PALETTES, scan, runQueue, resumeQueue, makeFlow, fetchFlow, pickerSheet, get running() { return running; }, get queueState() { return queueState; } };
+  window.DESK = { ui, render, startHosting, stopHosting, netCheck, pollOnline, get online() { return onSt; }, get onlineCheck() { return onCheck; }, onView, setPalette, PALETTES, scan, runQueue, resumeQueue, makeFlow, fetchFlow, pickerSheet, get running() { return running; }, get queueState() { return queueState; } };
   start().catch(e => { ui.scanning = false; toast(e.message, 'bad'); render(); });
 })();

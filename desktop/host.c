@@ -8,6 +8,9 @@
  * {id, ok, result|error, code}, sends {id, progress} while it works, and
  * {event, data} when something changes (a PSP plugged in or pulled).
  *
+ * The Online tab hosts GBAdhoc's online-play relay on a background thread
+ * (online.c, shared/relay); the UI polls its status.
+ *
  *   GBAdhoc-XMB.exe [--fake-psp DIR[,ef0][,go]]... [--ui-dir DIR] [--dev]
  *                   [--open QUERY] [--script FILE.js] [--shot OUT.png]
  *                   [--wait MS] [--result FILE]
@@ -18,6 +21,7 @@
 #include "net.h"
 #include "psp.h"
 #include "art.h"
+#include "online.h"
 
 #include <windows.h>
 #include <commdlg.h>
@@ -28,7 +32,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define XMB_VERSION "0.1.0-beta.2"
+#define XMB_VERSION "0.2.0-beta.1"
 #define HOST L"https://xmb.gbadhoc/"
 
 typedef struct
@@ -220,6 +224,18 @@ static DWORD WINAPI job_thread(LPVOID p)
       psp_pictures(j->args, &out);
    else if (!strcmp(j->cmd, "dirs"))
       psp_dirs(j->args, &out);
+   else if (!strcmp(j->cmd, "onlineStop"))
+   {
+      online_stop();
+      online_status_json(&out);
+   }
+   else if (!strcmp(j->cmd, "onlineCheck"))
+   {
+      online_cfg oc;
+      memset(&oc, 0, sizeof(oc));
+      oc.port = (unsigned)jv_num(j->args, "port", 0);
+      online_check_json(&oc, &out);
+   }
    else if (!strcmp(j->cmd, "netStatus"))
       art_net_status(&out);
    else if (!strcmp(j->cmd, "cacheStats"))
@@ -403,6 +419,32 @@ static void on_message(const char *text)
    {
       reply(id, 1, "true", NULL, NULL);
       test_result(args);
+   }
+   else if (!strcmp(cmd, "onlineStatus"))
+   {
+      sb b;
+      sb_init(&b);
+      online_status_json(&b);
+      reply(id, 1, b.s, NULL, NULL);
+      sb_free(&b);
+   }
+   else if (!strcmp(cmd, "onlineStart"))
+   {
+      online_cfg oc;
+      char code[16] = "", err[300] = "";
+      memset(&oc, 0, sizeof(oc));
+      oc.port = (unsigned)jv_num(args, "port", 0);
+      oc.upnp = jv_bool(args, "upnp", 1);
+      if (online_start(&oc, code, sizeof(code), err, sizeof(err)) == 0)
+      {
+         sb b;
+         sb_init(&b);
+         online_status_json(&b);
+         reply(id, 1, b.s, NULL, NULL);
+         sb_free(&b);
+      }
+      else
+         reply(id, 0, NULL, code, err);
    }
    else if (!strcmp(cmd, "log"))
    {
@@ -828,9 +870,15 @@ static LRESULT CALLBACK wndproc(HWND h, UINT m, WPARAM w, LPARAM l)
                          L"nothing is left half-written.",
                       L"GBAdhoc XMB", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
          return 0;
+      if (online_running() && !g_shot[0] && !g_result[0] &&
+          MessageBoxW(h, L"GBAdhoc XMB is hosting online play.\n\nClose anyway? The PSPs using this PC "
+                         L"lose their session, and the router's port mapping is removed.",
+                      L"GBAdhoc XMB", MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2) != IDYES)
+         return 0;
       DestroyWindow(h);
       return 0;
    case WM_DESTROY:
+      online_stop();
       if (g_ctrl)
          ICoreWebView2Controller_Close(g_ctrl);
       PostQuitMessage(0);
@@ -908,6 +956,7 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE prev, PWSTR cmdline, int show)
    sb_init(&g_last_devices);
    net_init();
    art_init();
+   online_init();
    u_log("GBAdhoc XMB %s starting%s", XMB_VERSION, psp_fake_mode() ? " (test folders)" : "");
 
    if (wv2_find_runtime(dll, 1024, g_runtime, 64) != 0)

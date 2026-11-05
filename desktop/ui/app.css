@@ -67,3 +67,40 @@ body.light{background:var(--dl-bg)}
    colour is for dots and bars), and the count in the selected filter chip is one step brighter */
 .pill.ok{color:var(--ok-text)}.pill.bad{color:var(--bad-text)}.pill.warn{color:var(--warn-text)}
 .chips span.on i{color:var(--text-3)}
+
+/* ---- Online tab (online.js): host GBAdhoc's relay on this PC ---- */
+.nav a i.onl{border-radius:50%;background:none;box-shadow:inset 0 0 0 3px var(--text-4)}
+.nav a.on i.onl{background:none;box-shadow:inset 0 0 0 3px var(--accent)}
+.nav a .n.live{background:var(--ok);color:var(--ink-0)}
+.statusbar .onl b{color:var(--ok-text)}
+.opage{max-width:980px}
+.onote{margin-bottom:16px;font-size:12.5px}
+.onote b{display:block;font-size:13.5px;margin-bottom:3px}
+.oroom{border-top:1px solid var(--bd);padding:10px 16px 12px}
+.orh{display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.orh .t{flex:1;min-width:0}
+.orh .t b{display:block;font-weight:700}
+.orh .t small{color:var(--text-3);font-size:11.5px}
+.ocode{font:800 26px var(--mono);letter-spacing:.18em;color:var(--accent-text);padding:2px 10px;border-radius:8px;background:var(--accent-soft)}
+.otab{width:100%;border-collapse:collapse;font-size:12px}
+.otab th{text-align:left;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-4);padding:4px 8px;border-bottom:1px solid var(--bd)}
+.otab td{padding:6px 8px;border-bottom:1px solid var(--bd);color:var(--text-2);white-space:nowrap}
+.otab td b{color:var(--text)}
+.otab td small{color:var(--text-3);font-family:var(--mono);font-size:11px}
+.otab td .bad{color:var(--bad-text)}.otab td .warn{color:var(--warn-text)}
+.mono{font-family:var(--mono);font-size:11.5px}
+.dim{color:var(--text-4)}
+input.num{width:88px;background:var(--field);color:var(--text);border:1px solid var(--bd-2);border-radius:7px;padding:5px 8px;font:600 12px var(--mono)}
+input.num:disabled{opacity:.5}
+.tog[aria-disabled=true]{opacity:.45;cursor:default}
+details#on-logbox summary{list-style:none;cursor:pointer;display:flex;align-items:center}
+details#on-logbox summary::-webkit-details-marker{display:none}
+details#on-logbox summary h3::after{content:" ▸";color:var(--text-4)}
+details#on-logbox[open] summary h3::after{content:" ▾"}
+.olog{max-height:240px;overflow:auto;padding:4px 16px 12px;font-size:12px;color:var(--text-2);display:flex;flex-direction:column;gap:3px}
+.olog.empty{color:var(--text-4)}
+.olog div{display:flex;gap:10px}
+.olog .mono{color:var(--text-4);flex:0 0 auto}
+.olog .ok{color:var(--ok-text)}.olog .warn{color:var(--warn-text)}.olog .bad{color:var(--bad-text)}
+.olog div.ok .mono,.olog div.warn .mono,.olog div.bad .mono{color:var(--text-4)}
+.win[data-theme=light] .onote.ok,.win[data-theme=light] .onote.bad,.win[data-theme=light] .onote.warn,.win[data-theme=light] .onote.info{color:var(--text)}
