@@ -117,7 +117,77 @@
     check('every game made after the resume', now.length === todo.length && now.every(g => !!g.entry), now.filter(g => !g.entry).map(g => g.file));
   }
 
-  const tests = { main, scanonly, makeone, nopsp, full, exists, unplug };
+  // ---- the Online tab (tests/online/test_online.sh): the real app hosts the relay on
+  // loopback, the router is fake_igd.py, and the shell starts two simulated consoles
+  const txt = (sel) => { const e = document.querySelector(sel); return e ? e.textContent : ''; };
+  const click = (sel) => document.querySelector(sel).click();
+  async function hostAndWait(verdict) {
+    const D = window.DESK;
+    D.onView.port = Number((/[?&]port=(\d+)/.exec(location.search) || [0, 37440])[1]);
+    D.ui.view = 'online'; D.render();
+    check('Online tab: title', txt('.tools h1') === 'Online play', txt('.tools h1'));
+    check('Online tab: not hosting at first', txt('#on-pill') === 'Not hosting' && txt('#on-host') === 'Host online room', txt('#on-pill'));
+    check('Online tab: the no-game-files note', /No game files pass through this PC/.test(txt('#on-nofiles')));
+    check('Online tab: firewall explained', /never changes firewall settings/.test(txt('.opage')));
+    click('#on-host');
+    await wait(() => D.online && D.online.running, 10000);
+    await new Promise(r => setTimeout(r, 300));
+    check('hosting after Host', txt('#on-pill') === 'Hosting' && txt('#on-host') === 'Stop hosting', txt('#on-pill'));
+    check('the rail says Live', /Live/.test(txt('#nav-online')));
+    check('the status bar says hosting', /Hosting online/.test(txt('#statusbar')));
+    await wait(() => D.online.verdict === verdict, 15000).catch(() => null);
+    check('verdict ' + verdict, D.online.verdict === verdict, D.online.verdict);
+    await new Promise(r => setTimeout(r, 1200));
+    out.upnp = D.online.upnp; out.verdict = D.online.verdict; out.note = txt('.onote');
+  }
+  async function stopAndCheck() {
+    const D = window.DESK;
+    click('#on-host');
+    await wait(() => D.online && !D.online.running, 20000);
+    await new Promise(r => setTimeout(r, 300));
+    check('stopped', txt('#on-pill') === 'Not hosting' && txt('#on-host') === 'Host online room', txt('#on-pill'));
+    check('the rail no longer says Live', !/Live/.test(txt('#nav-online')));
+  }
+  async function online() {
+    const D = window.DESK;
+    await hostAndWait('open');
+    check('note: ports open via UPnP', /UDP \d+-\d+ open via UPnP/.test(out.note), out.note);
+    check('the public address is hidden', !/203\.0\.113\.7/.test(txt('#on-live')));
+    click('[data-showpub]');
+    check('Show reveals it', /203\.0\.113\.7/.test(txt('#on-live')));
+    // test_online.sh starts two simulated consoles against this port now
+    await wait(() => D.online.rooms.some(r => r.players.length === 2 && r.players.every(p => p.pingMs >= 0)), 45000).catch(() => null);
+    const r = D.online.rooms.find(x => x.players.length === 2);
+    check('a room with two players', !!r, D.online.rooms);
+    await new Promise(res => setTimeout(res, 1100));
+    const row = r && document.querySelector(`.oroom[data-code="${r.code}"]`);
+    check('the room is drawn with its code', !!row && row.querySelector('.ocode').textContent === r.code);
+    check('two player rows with a ping', !!row && row.querySelectorAll('tbody tr').length === 2 && /\d+ ms/.test(row.textContent), row && row.textContent);
+    out.room = r;
+    click('#on-logbox summary');
+    check('the log lists the join', /joined room/.test(txt('#on-log')), txt('#on-log').slice(0, 400));
+    if (/[?&]hold=1/.test(location.search)) await new Promise(res => setTimeout(res, 4000));
+    click('#on-check');
+    await wait(() => D.onlineCheck && !D.onView.checking, 20000);
+    check('network check: router found', D.onlineCheck.upnp.state === 'found' && /Fake Router/.test(txt('#on-checkres')), D.onlineCheck.upnp);
+    check('network check: verdict', /Can host for the internet/.test(txt('#on-checkres')), txt('#on-checkres'));
+    out.check = D.onlineCheck;
+    await stopAndCheck();
+  }
+  async function onlinecgnat() {
+    await hostAndWait('cgnat');
+    check('CGNAT explained', /carrier-grade NAT/.test(out.note), out.note);
+    check('the shared relay suggested', /relay\.rayquaza\.ca/.test(out.note));
+    await stopAndCheck();
+  }
+  async function onlinenoupnp() {
+    await hostAndWait('lan-only');
+    check('no router explained', /didn.t open a port/.test(out.note) && /No UPnP router answered/.test(out.note), out.note);
+    check('the shared relay suggested', /relay\.rayquaza\.ca/.test(out.note));
+    await stopAndCheck();
+  }
+
+  const tests = { main, scanonly, makeone, nopsp, full, exists, unplug, online, onlinecgnat, onlinenoupnp };
   window.addEventListener('DOMContentLoaded', async () => {
     try {
       await wait(() => window.DESK && !window.DESK.ui.scanning && window.HOST, 60000);

@@ -43,7 +43,7 @@ for sel, body in re.findall(r"([^{}]+)\{([^{}]*)\}", css):
         root_toks |= set(re.findall(r"(--[\w-]+)\s*:", body))
 local = set()
 used = set()
-for f in ["desktop/ui/desktop.css", "desktop/ui/app.css", "desktop/ui/model.js", "desktop/ui/desktop.js"]:
+for f in ["desktop/ui/desktop.css", "desktop/ui/app.css", "desktop/ui/model.js", "desktop/ui/desktop.js", "desktop/ui/online.js"]:
     s = open(os.path.join(ROOT, f), encoding="utf-8").read()
     local |= set(re.findall(r"(--[\w-]+)\s*:", s))
     used |= set(re.findall(r"var\((--[\w-]+)", s))
