@@ -24,9 +24,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/img/hero.png" alt="GBAdhoc XMB for Windows, with Pokemon Emerald's entry open and its XMB preview, in front of GBAdhoc XMB for the PSP showing its library" width="880">
+  <img src="docs/img/hero.png" alt="GBAdhoc XMB for Windows, with Pokemon Emerald's entry open and its XMB preview, and in front of it a PSP whose screen shows GBAdhoc XMB's library with Golden Sun selected" width="880">
   <br>
-  <sub><b>The Windows app and the PSP app.</b> Both captured from the real apps, on a test folder of placeholder ROMs.</sub>
+  <sub><b>The Windows app and the PSP app.</b> Both screens captured from the real apps, on a test folder of placeholder ROMs; the PSP is a 3D render of the <a href="https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761">Sony PSP model</a> by <a href="https://sketchfab.com/strov">Ilya Ostrovsky</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
 </p>
 
 **GBAdhoc XMB is a companion to [GBAdhoc](https://github.com/ShoshinFauteux/GBAdhoc),** the

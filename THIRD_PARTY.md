@@ -67,3 +67,9 @@ All other art is ours: the GBAdhoc logo (`desktop/ui/assets/`), the app's ICON0 
 (`psp/tools/glyphs.js`), the title cards and every UI element, which are drawn in code. The
 screenshots in `docs/img/` are captures of the two apps on test folders with placeholder
 ROMs and drawn placeholder art.
+
+## Images
+
+| Component | Licence | Used for |
+|---|---|---|
+| **"Sony PSP" 3D model** by [Ilya Ostrovsky](https://sketchfab.com/strov) ([source](https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761)) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | the README hero image (`docs/img/hero.png`), rendered with the app's screen on it. The model itself is not in this repository. |
