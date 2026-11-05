@@ -9,8 +9,8 @@
 <h3 align="center">Every GBA, Game Boy and Game Boy Color game its own icon in your PSP's XMB,<br>opening straight into GBAdhoc.</h3>
 
 <p align="center">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--2.0--or--later-8d7bf3" alt="Licence: GPL-2.0-or-later"></a>
-  <a href="https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases"><img src="https://img.shields.io/badge/release-0.1.0--beta.1%20(pre--release)-f4bb20" alt="Release: 0.1.0-beta.1, pre-release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--2.0--or--later-5a5a5f" alt="Licence: GPL-2.0-or-later"></a>
+  <a href="https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases"><img src="https://img.shields.io/badge/release-0.1.0--beta.2%20(pre--release)-f5c518" alt="Release: 0.1.0-beta.2, pre-release"></a>
   <img src="https://img.shields.io/badge/PSP-1000%20%C2%B7%202000%20%C2%B7%203000%20%C2%B7%20Go-1fb5b0" alt="PSP-1000, 2000, 3000 and Go">
   <img src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-8ac32a" alt="Windows 10 and 11">
 </p>
@@ -37,11 +37,13 @@ XMB and it opens straight into GBAdhoc, with the same saves and save states as t
 It comes as two apps with one design. **The PSP app** does everything on the console: it
 finds your ROMs, recognises them, fetches their art over Wi-Fi and makes the entries.
 **The Windows app** does the same over USB, for a whole library at once.
+Both come in four colour themes, chosen in Settings: **Graphite**, the default, shown here,
+**Slate**, **Teal** and **Classic**.
 
 An entry is a small launcher of about 130 KB and a `launch.ini` that names the ROM. **Your
 ROMs are never copied.**
 
-> **This is a pre-release, 0.1.0 beta 1.** It works on a real PSP Go, and there is more to do
+> **This is a pre-release, 0.1.0 beta 2.** It works on a real PSP Go, and there is more to do
 > before 1.0: see [Pre-release: more work before 1.0](#pre-release-more-work-before-10).
 > Entries need **GBAdhoc 4.6.0-beta.4 or later**, which added the launch mode they start. Beta 4 is in testing and will be published on the [GBAdhoc releases page](https://github.com/ShoshinFauteux/GBAdhoc/releases) shortly; until then entries cannot start a game.
 
@@ -107,11 +109,15 @@ ROMs are never copied.**
 - **Previews the XMB** for each game before it writes anything.
 - **Uses the PSP's own network settings** and works offline: without Wi-Fi you can still make
   entries with the art already on the stick.
+- **Four colour themes.** Graphite (neutral greys with an amber accent, the default), Slate
+  (cool greys, steel blue), Teal (the logo's teal) and Classic (the indigo and violet of the
+  first beta). Change it in Settings › Theme with ◀ and ▶; it applies at once and is kept.
 
 ### Windows app
 
 - **One exe, nothing to install.** The UI is inside it, shown by the WebView2 runtime that
-  Windows 10 and 11 include. Dark and light themes.
+  Windows 10 and 11 include. The same four colour themes as the PSP app, in Settings › Theme,
+  each in dark or light.
 - **Finds the PSP by itself**, whatever drive letter Windows gives it, on a PSP-1000, 2000, 3000
   or Go. A Go's Memory Stick and internal storage are both shown.
 - **Recognises ROMs properly** against the No-Intro lists from libretro-database: by checksum,
@@ -146,6 +152,11 @@ gbadhoc = PSP/GAME/GBAdhoc
   background (PIC1, 480x272) and its `launch.ini` differ.
 - **The launcher starts your installed GBAdhoc** in its launch mode, with the ROM from
   `launch.ini`. Updating GBAdhoc updates every entry.
+- **The theme is only the app's.** The one piece of an entry it reaches is the title card, the
+  icon a game with no art gets: its Game Boy Advance cards are drawn in the theme's colour
+  family (Game Boy and Game Boy Color cards look the same in every theme). An entry keeps the
+  icon it was written with; changing the theme only changes entries made or updated after.
+  Box art, hero art, your own pictures and the launcher are the same in every theme.
 - **No ROM is copied.** The ROM stays in GBAdhoc's `roms` folder, so an entry is never a copy
   of a game. Saves, save states, settings and cheats are the game list's own: a game is the
   same game from its entry or from the list.
@@ -164,7 +175,7 @@ First, install **GBAdhoc 4.6.0-beta.4 or later** in `PSP/GAME/GBAdhoc`, with you
 
 ### PSP app
 
-1. Download `GBAdhoc-XMB-0.1.0-beta.1-psp.zip` from the
+1. Download `GBAdhoc-XMB-0.1.0-beta.2-psp.zip` from the
    [pre-release](https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases) and unzip it to the
    **root** of your Memory Stick or your PSP Go's internal storage. It lands in
    `PSP/GAME/GBAdhocXMB`.
@@ -175,7 +186,7 @@ First, install **GBAdhoc 4.6.0-beta.4 or later** in `PSP/GAME/GBAdhoc`, with you
 
 ### Windows app
 
-1. Download `GBAdhoc-XMB-0.1.0-beta.1-windows.zip` from the
+1. Download `GBAdhoc-XMB-0.1.0-beta.2-windows.zip` from the
    [pre-release](https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases) and unzip it anywhere.
 2. Connect the PSP in USB mode (on a Go, Settings › USB Connection) and run
    `GBAdhoc-XMB.exe`. It finds the PSP and scans it.
@@ -239,6 +250,8 @@ Tests:
 tools/test_core.sh        # Linux/WSL: entries checked byte by byte, PARAM.SFO against the SDK's mksfoex
 desktop/test_app.sh       # Windows: the real app on fake PSPs, offline, cable pulls included
 psp/tools/run_ppsspp.sh   # Linux/WSL: the PSP app in PPSSPP, driven by a key script
+python tools/test_themes.py                  # every theme defines every token, in both apps
+python psp/tools/check_shots.py <shots dir>  # contrast, size and overlap of the text in those shots
 ```
 
 The test folders hold placeholder ROMs only: correct headers and names, no game.
