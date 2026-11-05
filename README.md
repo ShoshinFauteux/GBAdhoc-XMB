@@ -293,12 +293,12 @@ directory entry lives 3 minutes after the PC stops refreshing it (a crash), or e
 confirms the router's public address with the shared relay but cannot test inbound traffic from
 outside. NAT-PMP/PCP routers are not tried, only UPnP-IGD.
 
-**Still for the owner to decide** (each a simple setting or constant): the code formats (the
-long invite form uses a CRC-7 check, not the mockup's truncated CRC-8, which missed some single
-typos), whether the directory is on by default (it is: Settings › *List the room in the
-directory*), whether invite codes should expire, whether the public address stays hidden by
-default (it does), whether to add a QR code (not built), and whether this PC should relay when
-the direct path fails (it always does today; turning it off needs a change in the relay core).
+**Decided by the owner (2026-11-05).** Two codes, kept separate, in one PSP Join box told apart by
+length: the room code first, the invite code as the backup. Codes never expire. The public address
+is hidden until *Show*, but an invite code encodes it, so hiding it only matters to people who do
+not have the code. No QR code. When the direct path fails, this PC relays (the default). The
+directory listing is on by default (Settings › *List the room in the directory*). The long invite
+form uses a CRC-7 check, not the mockup's low 7 bits of a CRC-8, which let some single typos through.
 
 ## Pre-release: more work before 1.0
 

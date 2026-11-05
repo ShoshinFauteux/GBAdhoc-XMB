@@ -64,7 +64,7 @@
         <div class="big">${esc(cd.room)}</div><div class="sub">${roomNote}</div>
         <div class="acts"><button class="b sm" data-copy="${esc(cd.room)}">Copy</button></div></div>`;
     const invite = `<div class="codebox"><div class="lbl">Invite code <span class="hint" title="This PC's address and port plus a check character, Crockford base32 (no I, L, O or U).">${inv ? len(inv) : 8} characters · no server</span></div>
-        <div class="big inv">${inv ? esc(inv) : '—'}</div><div class="sub">${inv ? (view.showIp ? 'Encodes this PC\'s public address' : 'Encodes this PC\'s public address (hidden above)') + `${len(inv) === 11 ? ' and its port' : ', the default port,'} and a check character. No server needed.` : 'No public address found yet, so there is no invite code for the internet.'}</div>
+        <div class="big inv">${inv ? esc(inv) : '—'}</div><div class="sub">${inv ? (view.showIp ? 'Encodes this PC\'s public address' : 'Encodes this PC\'s public address (hidden above, but anyone with the code can read it)') + `${len(inv) === 11 ? ' and its port' : ', the default port,'} and a check character. No server needed.` : 'No public address found yet, so there is no invite code for the internet.'}</div>
         <div class="acts">${inv ? `<button class="b sm primary" data-copy="${esc(inv)}">Copy</button>` : ''}</div>
         ${lanInv ? `<div class="sub lan">For a PSP on this network: <span class="mono">${esc(lanInv)}</span> <button class="b sm" data-copy="${esc(lanInv)}">Copy</button></div>` : ''}</div>`;
     const order = dirOff || dirDown ? [invite, room] : [room, invite];
@@ -88,7 +88,7 @@
 
   function roomsHTML(st) {
     const rooms = (st && st.rooms) || [];
-    if (!rooms.length) return `<div class="srow"><div class="t"><b>No rooms yet</b><small class="p">When a PSP creates the room with this PC's room code or invite code, its players appear here.</small></div></div>`;
+    if (!rooms.length) return `<div class="srow"><div class="t"><b>No rooms yet</b><small class="p">When PSPs join with this PC's room code or invite code (Wireless › Online › Join with code), they appear here. The first one in hosts the session.</small></div></div>`;
     return rooms.map(r => `<div class="oroom" data-code="${esc(r.code)}"><div class="orh"><span class="ocode">${esc(r.code)}</span><span class="t"><b>${r.players.length} ${r.players.length === 1 ? 'player' : 'players'}</b><small class="p">${esc(MODE[r.mode] || 'any link')} · open ${fmtDur(r.ageS)}${r.joined ? '' : ' · waiting for a guest (the code lasts 10 minutes)'}</small></span><button class="b sm" data-copy="${esc(r.code)}">Copy code</button></div>
       <table class="otab"><thead><tr><th>Player</th><th>From</th><th>Path</th><th>Ping to this PC</th><th>Loss</th><th>Packets/s in · out</th><th>Connected</th></tr></thead><tbody>
       ${r.players.map(p => `<tr data-slot="${p.slot}"><td><b>${p.slot === 0 ? 'Host' : 'Guest ' + p.slot}</b>${p.nick ? ' · ' + esc(p.nick) : ''}</td><td>${esc(p.where)}<small> ${esc(p.ip)}</small></td><td>${pathCell(p)}</td><td>${pingCell(p)}</td><td>${lossCell(p)}</td><td class="mono">${p.ppsIn} · ${p.ppsOut}</td><td>${fmtDur(p.connS)}</td></tr>`).join('')}

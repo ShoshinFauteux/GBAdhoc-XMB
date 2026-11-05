@@ -23,9 +23,12 @@ Join with code.
   fixtures, and a discovery run of the real host code: it registers with an in-process directory
   on 127.0.0.1, one console joins by the room code, the other by the invite code, and Stop frees
   the code.
-- **Still open for the owner:** the code formats, the directory default, invite expiry (an invite
-  is valid while the address and port stay the same), hiding the public address by default (it
-  is hidden), a QR code (not built), and the relay-fallback default.
+- **Owner decisions (2026-11-05):** both codes, one PSP Join box (room code first, invite code as
+  the backup); codes never expire (an invite is valid while the address and port stay the same);
+  the public address hidden until *Show* (an invite code encodes it, so that is cosmetic for
+  anyone holding the code); no QR code; relay via this PC when the punch fails.
+- **Both players join.** On the PSP both press *Join with code*; the first in hosts the session
+  (GBAdhoc `claude/online-desktophost`).
 
 ## 0.2.0-beta.1
 
