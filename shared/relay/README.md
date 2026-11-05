@@ -9,15 +9,17 @@ enforce the same rules.
 
 | Here | Upstream (github.com/ShoshinFauteux/GBAdhoc) |
 |---|---|
-| `relay_core.c`, `relay_core.h`, `relay_proto.h` | `netdrv/` |
+| `relay_core.c`, `relay_core.h`, `relay_proto.h`, `relay_dirclient.c/.h`, `invite_code.h` | `netdrv/` |
 | `client/transport_relay.c/.h`, `client/netdrv.c/.h`, `client/netdrv_wire.h` | `netdrv/` |
-| `tests/test_relay_nat.c`, `tests/fuzz_relay.c`, `tests/relay_client.c` | `tools/relay/` |
+| `tests/test_relay_nat.c`, `tests/test_relay_desktop.c`, `tests/test_invite.c`, `tests/fuzz_relay.c`, `tests/relay_client.c` | `tools/relay/` |
 
-Upstream commit: `cb6eb47f495a4375ec7c1ac04b5ad17d200d9dd9` (branch `claude/beta4-online-zero`,
-2026-11-05). The protocol and its security rules are specified in GBAdhoc's
-`docs/ONLINE-TUNNEL.md`, sections 5 and 6.
+Upstream commit: `24e3e2dd` (branch `claude/online-desktophost`, 2026-11-05: the directory --
+REGISTER / LOOKUP --, the home code and invite codes; earlier `cb6eb47f`). The protocol and its
+security rules are specified in GBAdhoc's `docs/ONLINE-TUNNEL.md`, sections 5 and 6 and
+"Desktop hosts and discovery".
 
-Only `relay_core.c` is built into `GBAdhoc-XMB.exe`. `client/` (the console side of the
+`relay_core.c` and `relay_dirclient.c` (the host's side of the directory: register this PC's
+room code with the shared server) are built into `GBAdhoc-XMB.exe`, with `invite_code.h`. `client/` (the console side of the
 protocol and netdrv, the link-session layer) and `tests/` are built only by the tests, which
 drive simulated consoles through the desktop relay.
 
