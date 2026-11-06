@@ -49,7 +49,7 @@ whenever the networks allow. See [Play online](#play-online-host-from-your-pc).
 An entry is a small launcher of about 130 KB and a `launch.ini` that names the ROM. **Your
 ROMs are never copied.**
 
-> **This is a pre-release, 0.1.0 beta 2.** It works on a real PSP Go, and there is more to do
+> **This is a pre-release, 0.2.0 beta 1.** It works on a real PSP Go, and there is more to do
 > before 1.0: see [Pre-release: more work before 1.0](#pre-release-more-work-before-10).
 > Entries need **GBAdhoc 4.6.0-beta.4 or later**, which added the launch mode they start. Beta 4 is in testing and will be published on the [GBAdhoc releases page](https://github.com/ShoshinFauteux/GBAdhoc/releases) shortly; until then entries cannot start a game.
 
