@@ -1088,12 +1088,41 @@ int art_icon0(const game *g, image *out)
    return rc;
 }
 
+int art_pic1_is_hero(const game *g)
+{
+   return g->bg.kind == ART_OWN || g->bg.kind == ART_NET;
+}
+
+/* GBAdhoc's hero art keeps its bottom 44 of 272 rows as a calm, dark band
+ * for the Marquee's hint bar (heroforge PROMPT.md).  The XMB has no hint
+ * bar, so the band is left out: the top 228/272 of the picture is scaled
+ * to fill 480x272.  The width this needs is taken from the RIGHT edge, so
+ * the subject (60-95% across) stays where the art put it and whole; the
+ * left edge it drops is the art's quiet side. */
+#define HERO_KEEP (228.0f / 272.0f)
+
 int art_pic1(const game *g, image *out)
 {
    image bg = { 0 };
    int rc;
    if (load_bg_src(g, &bg) != 0)
       return -1;
+   if (art_pic1_is_hero(g))
+   {
+      float uh = bg.h * HERO_KEEP, uw = uh * 480.0f / 272.0f, x0 = bg.w - uw;
+      if (x0 < 0)
+      {
+         /* narrower than the screen's shape: full width, the top rows */
+         uw = (float)bg.w;
+         uh = uw * 272.0f / 480.0f;
+         x0 = 0;
+      }
+      rc = img_alloc(out, 480, 272);
+      if (rc == 0)
+         resample(&bg, x0, 0, x0 + uw, uh, out->px, 480, 272, 480);
+      img_free(&bg);
+      return rc;
+   }
    if (bg.w == 480 && bg.h == 272)
    {
       *out = bg;

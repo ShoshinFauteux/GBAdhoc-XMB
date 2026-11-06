@@ -406,11 +406,22 @@ ${text}
     boxWithShadow(ctx, im, r, Math.floor((144 - w) / 2), Math.floor((80 - h) / 2), w, h);
     return cv.toDataURL('image/png');
   }
+  // GBAdhoc's hero art (its own hero folder, or GBAdhoc-heroart) keeps its bottom 44 of 272 rows
+  // dark for the Marquee's hint bar; the XMB has none, so the top 228/272 fills the screen, the
+  // width taken from the right edge so the subject stays right (psp/art.c art_pic1, the same rule)
+  const HERO_KEEP = 228 / 272;
+  function isHero(c) { return !!c && (c.kind === 'own' || c.kind === 'scraped'); }
   async function composePic(g) {
     const bg = bgSrc(g); if (!bg) return null;
     const cv = document.createElement('canvas'); cv.width = 480; cv.height = 272;
     const ctx = cv.getContext('2d'); ctx.imageSmoothingQuality = 'high';
-    drawFit(ctx, await loadImg(bg), 480, 272, true);
+    const im = await loadImg(bg);
+    if (isHero(state[g.id].bg)) {
+      const w = im.naturalWidth, h = im.naturalHeight;
+      let uh = h * HERO_KEEP, uw = uh * 480 / 272, x0 = w - uw;
+      if (x0 < 0) { uw = w; uh = uw * 272 / 480; x0 = 0; }
+      ctx.drawImage(im, x0, 0, uw, uh, 0, 0, 480, 272);
+    } else drawFit(ctx, im, 480, 272, true);
     return cv.toDataURL('image/png');
   }
   function folderFor(title) {
@@ -501,7 +512,7 @@ ${text}
     if (opts.arrive) requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('arrive')));
     const catX = (i) => 96 + (i - 4) * (i < 4 ? 44 : 60);
     div.innerHTML = `
-      <div class="xmbp-bg" style="${bg ? `background-image:url('${bg}')` : ''}"></div>
+      <div class="xmbp-bg" style="${bg ? `background-image:url('${bg}')${!opts.noBg && isHero(s.bg) ? ';background-size:auto ' + (100 / HERO_KEEP).toFixed(2) + '%;background-position:right top' : ''}` : ''}"></div>
       ${bg ? '' : '<div class="xmbp-wave"><i></i></div>'}
       <div class="xmbp-cats">${CATS.map(([k, label], i) => `<span class="xmbp-cat ${k === 'game' ? 'on' : ''}" style="left:${catX(i)}px">${GLYPHS[k]}${k === 'game' ? `<b>${label}</b>` : ''}</span>`).join('')}</div>
       <div class="xmbp-clock">${opts.clock || new Date().toTimeString().slice(0, 5)}<span class="batt"></span></div>

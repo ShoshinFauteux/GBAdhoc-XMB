@@ -32,10 +32,12 @@ int img_png(const image *im, unsigned char **png, size_t *len);     /* malloc'd 
 /* The ICON0 for a game's current choices and layout (g->fit, FIT_*), a
  * title card when there is no art.  A 144x80 custom PNG goes in as it is. */
 int art_icon0(const game *g, image *out);
-/* The PIC1, or -1 when the game has no background chosen: a 480x272 picture
- * as it is (hero art keeps its framing, subject right), anything else
- * covered. */
+/* The PIC1, or -1 when the game has no background chosen.  GBAdhoc hero art
+ * (ART_OWN / ART_NET) drops its bottom hint-bar band: the top 228/272 fills
+ * the screen, cropped from the left so the subject stays right.  Anything
+ * else: 480x272 as it is, other sizes covered. */
 int art_pic1(const game *g, image *out);
+int art_pic1_is_hero(const game *g);
 /* A picture the owner supplies (custom folder, PICTURE): readable, decodable
  * and of a size the PSP can resample.  0 = ok, else why = "is too large...". */
 #define ART_MAX_FILE (8 << 20)

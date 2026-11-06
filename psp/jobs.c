@@ -802,9 +802,9 @@ static int do_make(int gi, int quiet, char *why, size_t whycap)
    if (g->bg.kind != ART_NONE)
    {
       t0 = now_ms();
-      /* a 480x272 PNG already (GBAdhoc's hero folder, the hero cache) goes
-       * in as it is: no decode, no re-encode */
-      if (g->bg.kind == ART_OWN || g->bg.kind == ART_NET || g->bg.kind == ART_PIC || g->bg.kind == ART_CUSTOM)
+      /* the owner's 480x272 PNG goes in as it is: no decode, no re-encode
+       * (GBAdhoc's hero art is re-framed without its hint-bar band: art_pic1) */
+      if (g->bg.kind == ART_PIC || g->bg.kind == ART_CUSTOM)
       {
          unsigned char *d;
          size_t n;
