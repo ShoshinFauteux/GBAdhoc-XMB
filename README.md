@@ -20,6 +20,7 @@
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#how-it-works">How it works</a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#install">Install</a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#play-online-host-from-your-pc"><b>Play online</b></a>
+  &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#faq-and-troubleshooting">FAQ</a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="#pre-release-more-work-before-10">Known issues</a>
   &nbsp;&nbsp;·&nbsp;&nbsp; <a href="https://github.com/ShoshinFauteux/GBAdhoc">GBAdhoc</a>
 </p>
@@ -99,109 +100,31 @@ ROMs are never copied.**
 
 > **Experimental**, like GBAdhoc's online play itself (4.6.0-beta.4 and later).
 
-**Link play with a friend anywhere, from the Windows app.** Press **Host** in the Online tab and
-your PC becomes the meeting point for the two PSPs. You get a four-letter code to send your
-friend. They type it on their PSP and you are linked, as if a cable ran between the consoles.
+**Link play with a friend anywhere.** Press **Host** in the Windows app's Online tab, send your
+friend the four-letter code, and your PSPs link over the internet as if a cable ran between
+them. The PSPs connect directly to each other whenever their networks allow it. When they can't,
+your PC passes the traffic along. `relay.rayquaza.ca` is only a directory that turns the code
+into your PC's address; game traffic never goes through it.
 
 <p align="center">
   <img src="docs/img/desktop-online.png" alt="The Windows app's Online tab while hosting: Ready, friends can join with code; a Copy message button with the sentence to send; the room code and the invite code; the room with two players, both Direct" width="880">
   <br>
-  <sub><b>Hosting.</b> One line says whether friends can join and with which code. <i>Copy message</i> puts the sentence above it on the clipboard, ready to paste in a chat. Captured from the real app in a loopback test: the router is a simulated UPnP device, the directory runs locally, and the two players are GBAdhoc's simulated test consoles on port 37440, so the invite code is the 11-character form. On GBAdhoc's default port it is 8 characters.</sub>
+  <sub><b>Hosting.</b> Captured from the real app in a loopback test: the router is a simulated UPnP device, the directory runs locally, and the two players are GBAdhoc's simulated test consoles on port 37440, so the invite code is the 11-character form (8 characters on GBAdhoc's default port).</sub>
 </p>
-
-**Why it is easy:**
-
-- **One button.** *Host* opens the port on your router with UPnP, finds your public address, checks
-  it, and lists your room. Then it says either *Ready: friends can join with code KQTR* or what is
-  in the way and how to fix it.
-- **One code to share.** The room code is four letters. *Copy message* copies a ready-made
-  sentence with the code, where to type it, and a backup code.
-- **Direct whenever possible.** Once both PSPs are in, they try to reach each other directly
-  (peer to peer), and game traffic then skips your PC. When their networks do not allow it, your
-  PC passes the traffic along. The player list shows *Direct* or *Via host* for each PSP, with
-  its ping.
-- **Nothing to set up on the PSP** beyond typing the code. Your friend needs nothing from their
-  router: only the host does.
-
-### Step by step
 
 **On the PC (the host):**
 
-1. Open GBAdhoc XMB and click **Online**.
-2. Click **Host online room**. If Windows asks whether GBAdhoc XMB may use the network, allow it.
-3. The app opens UDP 27420-27421 on your router with UPnP, checks your public address and lists
-   the room. When it says **Ready: friends can join with code ABCD**, click **Copy message** and
-   send that to your friend.
-4. Keep the app open while you play. *Stop hosting* closes the room and the router ports.
+1. Open GBAdhoc XMB and click **Online**, then **Host online room**. If Windows asks whether the
+   app may use the network, allow it.
+2. The app opens the ports on your router with UPnP and checks your connection. When it says
+   **Ready: friends can join with code ABCD**, click **Copy message** and send it to your friend.
+3. Keep the app open while you play. *Stop hosting* closes the room.
 
-**On the PSPs (you and your friend):** in GBAdhoc, Settings › Online play on. Then Wireless ›
-Online › **Join with code**, type the code, and press **Join with code**. Both players join the
-same way: the first PSP in hosts the link session and the second follows it.
+**On each PSP (you and your friend):** in GBAdhoc, turn on Settings › Online play. Then go to
+Wireless › Online › **Join with code**, type the code and join. The first PSP in hosts the link
+session, and the second follows it.
 
-**Two codes.** The **room code** (four letters, `KQTR`) is looked up on `relay.rayquaza.ca`.
-That server is only a directory: it tells the PSP where your PC is (about 100 bytes) and never
-carries game traffic. The **invite code** (eight characters, `SC07-2AGV`) holds your PC's
-address and a check character, so it needs no server at all. Share it if the directory is down;
-the app then shows it first. Codes never expire. An invite code stays valid while your PC keeps
-its public address and port.
-
-### If a friend can't join
-
-These are the problems found in the first real sessions.
-
-- **On a phone hotspot.** If the phone is also connected to Wi-Fi, many phones (Samsung and
-  others) share that Wi-Fi instead of mobile data, so the PSP is not where you think it is. Turn
-  the phone's Wi-Fi off.
-- **Same build, same BIOS.** Both players need **the same GBAdhoc build** and **`gba_bios.bin`**
-  in GBAdhoc's folder, or the games desync. That includes a player in PPSSPP: it needs the BIOS
-  file too.
-- **In the same house as the PC.** Many routers do not loop their own public address back to the
-  house. The room code handles this: the directory sees that the PSP is in the PC's house and
-  sends it to the PC's local address. With an invite code, use the **same-house** code shown
-  under it.
-- **Your router has no UPnP or port forwarding** (some provider gateways are managed only from a
-  phone app). The app says *Your router didn't open a port, so only this network can join*. Look
-  in that app for UPnP or Port forwarding and forward UDP 27420-27421 to your PC. If there is no
-  such setting, or your connection is behind carrier-grade NAT (the app says so too), **let your
-  friend host instead**. Joining needs nothing from a router, and once both PSPs are in, the
-  direct path works on most home networks, with the host's PC as the fallback.
-- **A PSP hosting** (GBAdhoc's own *Create room*) needs UDP 27500 forwarded to that PSP.
-  Letting a PC host is easier: GBAdhoc XMB opens its own ports.
-- **Only one relay per PC.** If a GBAdhoc relay already runs on this PC (the standalone
-  `gbadhoc-relay`, or another copy of the app), the app does not start a second one on the same
-  port. It offers to **use the one already running**, with that relay's invite code, or to host
-  on the next free port.
-
-<p align="center">
-  <img src="docs/img/desktop-online-blocked.png" alt="The Online tab when the router opened no port: only this network can join, the fix named, and the option to let the friend host" width="760">
-  <br>
-  <sub><b>When the router is in the way</b>, the tab names the fix. Captured in the same loopback test with no UPnP router.</sub>
-</p>
-
-### The details
-
-- **The PC must stay on.** The room lasts while the app is open and hosting. The app keeps the PC
-  from sleeping while it hosts. Settings › *Host when GBAdhoc XMB starts* (off by default) opens
-  the room as soon as the app opens.
-- **Your address.** A friend on the internet connects to your PC, so they learn its public IP, and
-  the invite code contains it. The app hides the address until you click *Show*. Share codes only
-  with people you would tell your address.
-- **The firewall is yours.** The app never changes Windows Firewall settings. If you refused the
-  prompt: Windows Security › Firewall & network protection › Allow an app through firewall, and
-  tick GBAdhoc XMB.
-- **No game files pass through the PC**, only link traffic, the same as between two PSPs.
-- **Security.** The relay is GBAdhoc's own (the same code as the public server, vendored in
-  `shared/relay/`). It keeps the same rules: a cookie challenge before any room is made, no reply
-  larger than its request, per-address and per-player limits, rooms that expire, and fixed-size
-  tables. The ports are open only while you host, and *Stop* removes the router's mappings. A UPnP
-  answer is only followed to an address on your own network.
-- **Known limits.** One room per PC, up to five players. The reachability check confirms your
-  public address with the directory but cannot test traffic arriving from outside. Only UPnP-IGD
-  is tried, not NAT-PMP or PCP. The directory entry ends at once on *Stop*, or 3 minutes after a
-  crash.
-- **Decided by the owner (2026-11-05).** Two codes, room code first and invite code as the backup.
-  Codes never expire. The public address is hidden by default. No QR code. When the direct path
-  fails, the PC relays.
+Something not working? See the [FAQ and troubleshooting](#faq-and-troubleshooting) at the end.
 
 ## Features
 
@@ -342,7 +265,7 @@ GBAdhoc XMB has been tested on a real PSP Go, where it works. This is what we kn
   yet say how close it is to its base game.
 - **Online hosting is experimental.** Its tests run on loopback against a simulated router and
   simulated consoles; the first sessions with real PSPs over the internet found the problems
-  listed under [If a friend can't join](#if-a-friend-cant-join). Reports are welcome, with the
+  listed in the [FAQ](#faq-and-troubleshooting). Reports are welcome, with the
   Online tab's log.
 - **More art sources.** Today box art comes from libretro-thumbnails and hero art from
   GBAdhoc-heroart only.
@@ -412,3 +335,105 @@ GPL-2.0-or-later, the same as GBAdhoc. See [LICENSE](LICENSE) and [NOTICE](NOTIC
 GBAdhoc XMB contains no games, BIOS files or game artwork. PSP and XMB are trademarks of Sony
 Interactive Entertainment, and Game Boy is a trademark of Nintendo; this project is not
 affiliated with either.
+
+## FAQ and troubleshooting
+
+Online play from the Windows app. These are the problems found in the first real sessions.
+
+#### My friend's PSP says "server did not answer"
+
+The PSP could not reach your PC. Check these in order:
+- The Online tab says **Ready**.
+- Windows Firewall allows GBAdhoc XMB (Windows Security › Firewall & network protection › Allow an
+  app through firewall).
+- The code is typed exactly.
+
+If it still fails, send the **invite code** instead: it needs no server. A friend in your house
+should use the same-house code (see below).
+
+#### I'm using my phone's hotspot and it won't connect
+
+Turn the phone's **Wi-Fi off**. When a phone is also connected to Wi-Fi, many phones (Samsung and
+others) share that Wi-Fi instead of mobile data.
+
+#### The games fell out of step (desynced)
+
+Both players need **the same GBAdhoc build** and **`gba_bios.bin`** in GBAdhoc's folder. That
+includes a player in PPSSPP, which needs the BIOS file too.
+
+#### Hosting says my router blocks it
+
+<p align="center">
+  <img src="docs/img/desktop-online-blocked.png" alt="The Online tab when the router opened no port: only this network can join, the fix named, and the option to let the friend host" width="720">
+</p>
+
+The app says *Your router didn't open a port, so only this network can join*. To fix it:
+1. Turn on **UPnP** in your router's settings. Some provider gateways are managed only from a
+   phone app: look there for UPnP or **Port forwarding**. You can also forward UDP 27420-27421 to
+   your PC by hand.
+2. Press **Stop**, then **Host** again.
+
+If your router has neither setting, or the app says carrier-grade NAT or a second router, **let
+your friend host instead**. Joining needs nothing from a router.
+
+#### It works, but the player list says "Via host", not "Direct"
+
+That is fine. The two networks would not let the PSPs reach each other directly, so your PC
+passes the traffic along: the owner chose this as the fallback. It adds a little ping. Phone
+networks and some routers cause it, and nothing needs fixing.
+
+#### We're in the same house as the PC and can't connect
+
+Many routers do not loop their own public address back into the house. The **room code**
+handles this by itself: the directory sends a PSP in your house to the PC's local address. With
+an **invite code**, use the **same-house** code shown under it in the Online tab.
+
+#### Can a PSP host instead of a PC?
+
+Yes, with GBAdhoc's own *Create room*, but the PSP's router must forward **UDP 27500** to that
+PSP. Letting a PC host is easier, because GBAdhoc XMB opens its own ports.
+
+#### It says the port is already in use
+
+A GBAdhoc relay is already running on this PC: the standalone `gbadhoc-relay`, or another copy of
+the app. The app never starts a second relay on the same port or stops the first one. It offers
+**Use it**, with that relay's invite code, or to host on the next free port.
+
+#### Does my IP address get shared?
+
+With the person you invite, yes. A friend on the internet connects to your PC, so they learn its
+public IP, and the invite code contains it. The app keeps the address hidden on screen until you
+click *Show*, and *Copy message* never includes it. The room code does not contain it, though
+the directory gives it to whoever looks the code up. Share codes only with people you would
+tell your address.
+
+#### Do codes expire?
+
+No. A room code lasts while you host. An invite code stays valid while your PC keeps its public
+address and port.
+
+#### Does the PC have to stay on?
+
+Yes. The room lasts while the app is open and hosting, and the app keeps the PC from sleeping
+meanwhile. Settings › *Host when GBAdhoc XMB starts* (off by default) opens the room as soon as
+the app opens.
+
+#### Is it safe to open a port?
+
+The ports are open only while you host, and *Stop* removes them from the router. Only link
+traffic passes through your PC, never game files. The relay is GBAdhoc's own server code
+(`shared/relay/`), with the same protections as the public server:
+- a cookie challenge before any room is made;
+- no reply larger than its request;
+- per-address and per-player limits;
+- rooms that expire;
+- fixed-size tables.
+
+The app never changes Windows Firewall, and it only follows a UPnP answer to an address on your
+own network.
+
+#### How many players, and what are the limits?
+
+One room per PC, up to five players. The app's check confirms your public address but cannot
+test traffic arriving from outside. Only UPnP-IGD is tried, not NAT-PMP or PCP. On *Stop* the
+code is removed from the directory at once. After a crash it stays listed for 3 minutes.
