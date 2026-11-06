@@ -181,7 +181,7 @@ const img_slot *jobs_thumb(const char *path, int sect, int w, int h, int cover)
           g_thumbs[i].cover == cover && strcmp(g_thumbs[i].path, path) == 0)
       {
          g_thumbs[i].used = ++g_clock;
-         return g_thumbs[i].s.state == IMG_READY ? &g_thumbs[i].s : NULL;
+         return g_thumbs[i].s.state == IMG_READY || g_thumbs[i].s.state == IMG_FAIL ? &g_thumbs[i].s : NULL;
       }
    {
       req_t r;
@@ -796,7 +796,7 @@ static int do_make(int gi, int quiet, char *why, size_t whycap)
       if (title_card)
          step(STEP_WARN, "ICON0.PNG (144\xC3\x97" "80 title card: no art for this game yet)");
       else
-         step(STEP_OK, "ICON0.PNG (144\xC3\x97" "80, %s)", g->fit == FIT_TILE ? "tile" : g->fit == FIT_FIT ? "fitted" : "filled");
+         step(STEP_OK, "ICON0.PNG (144\xC3\x97" "80, %s)", g->icon.kind == ART_ENTRY ? "as it is" : fit_name(g->fit));
    }
    /* PIC1 */
    if (g->bg.kind != ART_NONE)
@@ -804,7 +804,7 @@ static int do_make(int gi, int quiet, char *why, size_t whycap)
       t0 = now_ms();
       /* a 480x272 PNG already (GBAdhoc's hero folder, the hero cache) goes
        * in as it is: no decode, no re-encode */
-      if (g->bg.kind == ART_OWN || g->bg.kind == ART_NET || g->bg.kind == ART_PIC)
+      if (g->bg.kind == ART_OWN || g->bg.kind == ART_NET || g->bg.kind == ART_PIC || g->bg.kind == ART_CUSTOM)
       {
          unsigned char *d;
          size_t n;

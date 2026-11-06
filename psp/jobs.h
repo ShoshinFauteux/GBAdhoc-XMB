@@ -66,6 +66,7 @@ void jobs_ack(void);              /* the dialog closed: g_task back to idle */
 /* screen-side caches; NULL while not ready (the request is queued) */
 const img_slot *jobs_icon(int game);           /* ICON0 144x80 */
 const img_slot *jobs_pic(int game);            /* PIC1 480x272 (NULL if none chosen) */
+/* a thumbnail: NULL while queued, state IMG_FAIL (px NULL) when unreadable */
 const img_slot *jobs_thumb(const char *path, int sect, int w, int h, int cover);
 void jobs_frame_end(void);        /* free retired buffers (UI thread) */
 

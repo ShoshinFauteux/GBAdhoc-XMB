@@ -218,6 +218,8 @@ static DWORD WINAPI job_thread(LPVOID p)
    }
    else if (!strcmp(j->cmd, "pictures"))
       psp_pictures(j->args, &out);
+   else if (!strcmp(j->cmd, "custom"))
+      psp_custom(j->args, &out);
    else if (!strcmp(j->cmd, "dirs"))
       psp_dirs(j->args, &out);
    else if (!strcmp(j->cmd, "netStatus"))

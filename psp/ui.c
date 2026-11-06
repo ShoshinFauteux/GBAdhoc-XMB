@@ -355,9 +355,9 @@ static void chips_for(const game *g, float x, float y, float maxw, int rows)
    if (g->m.recognised)
    {
       const char *k1 = g->icon.kind == ART_NONE ? "none" : g->icon.kind == ART_OWN ? "GBAdhoc's" :
-                       g->icon.kind == ART_NET ? "internet" : g->icon.kind == ART_ENTRY ? "the entry's" : "own picture";
+                       g->icon.kind == ART_NET ? "internet" : g->icon.kind == ART_ENTRY ? "the entry's" : "your picture";
       const char *k2 = g->bg.kind == ART_NONE ? "none" : g->bg.kind == ART_OWN ? "GBAdhoc's" :
-                       g->bg.kind == ART_NET ? "internet" : g->bg.kind == ART_ENTRY ? "the entry's" : "own picture";
+                       g->bg.kind == ART_NET ? "internet" : g->bg.kind == ART_ENTRY ? "the entry's" : "your picture";
       snprintf(c[n], 96, "Box art \xC2\xB7 %s", k1);
       dot[n++] = g->icon.kind != ART_NONE ? C_OK : C_FG4;
       snprintf(c[n], 96, "Hero \xC2\xB7 %s", k2);
@@ -761,7 +761,8 @@ static int game_rows(const game *g, row_t *r)
    r[n].k = "Hero"; r[n].id = R_HERO; snprintf(r[n].v, 160, "%s", lab); r[n].muted = g->bg.kind == ART_NONE; n++;
    r[n].k = "Icon"; r[n].id = R_ICON;
    if (!game_has_icon(g)) snprintf(r[n].v, 160, "Title card (no art yet)");
-   else snprintf(r[n].v, 160, "%s", g->fit == FIT_TILE ? "Tile \xC2\xB7 hero + box art" : g->fit == FIT_FIT ? "Box art fitted" : "Box art filled");
+   else if (g->icon.kind == ART_ENTRY) snprintf(r[n].v, 160, "As it is now");
+   else snprintf(r[n].v, 160, "%s", fit_name(g->fit));
    r[n].muted = !game_has_icon(g); n++;
    r[n].sep = 1; r[n].id = R_SEP; n++;
    r[n].act = 1; r[n].id = R_FETCH;
@@ -809,6 +810,11 @@ static void draw_game(view *v)
       {
          snprintf(cap, sizeof(cap), "Its ROM moved to %s. Update the entry to point launch.ini there.", g->folder);
          bg = 0x29EF3F6Du; bd = 0x73EF3F6Du; fg = 0xFFFFC4D3u;
+      }
+      else if (g->custom_msg[0])
+      {
+         snprintf(cap, sizeof(cap), "Not used: %s.", g->custom_msg);
+         bg = g_th->warn_soft; bd = g_th->warn_line; fg = g_th->warn_text2;
       }
       else if (!g->m.recognised)
       {
@@ -918,8 +924,18 @@ static void cycle_fit(game *g)
       toast("With no art the icon is a title card; add box art or a hero to change it", TOAST_WARN);
       return;
    }
-   g->fit = (g->fit + 1) % 3;
+   if (g->icon.kind == ART_ENTRY)
+   {
+      toast("The entry's own icon is kept as it is; choose box art to lay out a new one", TOAST_WARN);
+      return;
+   }
+   g->fit = (g->fit + 1) % FIT_COUNT;
    game_touch(g);
+   {
+      char m[96];
+      snprintf(m, sizeof(m), "Icon: %s", fit_name(g->fit));
+      toast(m, TOAST_OK);
+   }
 }
 
 static void key_game(view *v, int k)
@@ -1144,9 +1160,36 @@ static int pick_cands(const game *g, int which, pick_c *c)
       c[n].cover = which;
       n++;
    }
+   /* the custom folder: this game's own file first, then every other
+    * picture there (any of them can be given to any game) */
+   {
+      char mine[PATHCAP];
+      int has = model_custom_for(g, which, mine, sizeof(mine)) == 0;
+      if (has)
+      {
+         c[n].kind = ART_CUSTOM;
+         snprintf(c[n].path, PATHCAP, "%s", mine);
+         snprintf(c[n].label, 96, "%s", base_name(mine));
+         snprintf(c[n].meta, 96, "custom \xC2\xB7 matches the ROM");
+         c[n].cover = which;
+         n++;
+      }
+      for (i = 0; i < g_ncustom && n < 20; i++)
+      {
+         char p[PATHCAP];
+         snprintf(p, sizeof(p), "%s/custom/%s", g_st.app_dir, g_custom[i]);
+         if (has && strcmp(p, mine) == 0) continue;
+         c[n].kind = ART_CUSTOM;
+         snprintf(c[n].path, PATHCAP, "%s", p);
+         snprintf(c[n].label, 96, "%s", g_custom[i]);
+         snprintf(c[n].meta, 96, "custom folder");
+         c[n].cover = which;
+         n++;
+      }
+   }
    if (!which)
    {
-      for (i = 0; i < g->ncand; i++)
+      for (i = 0; i < g->ncand && n < 26; i++)
          if (g->cand[i].cache[0])
          {
             c[n].kind = ART_NET;
@@ -1270,6 +1313,8 @@ static void draw_pick(view *v)
             if (!c[i].below)
                kit_corners(xx, yy, w, h, 6);
          }
+         else if (th && th->state == IMG_FAIL)
+            gfx_text_center(XF_700_11, xx + w / 2, yy + h / 2 + 4, "Can't read", C_FG3);
          else
             kit_spinner(xx + w / 2, yy + h / 2, 6, C_FG4);
       }
@@ -1290,12 +1335,19 @@ static void draw_pick(view *v)
          gfx_rrect(xx + 4, yy + h - 4 - 17.8f, pw, 17.8f, 4, C_OK);
          gfx_text_n(XF_800_10, xx + 9, yy + h - 4 - 17.8f + face_baseline(XF_800_10, 17.8f), "IN USE", -1, 0.6f, C_INK0);
       }
-      gfx_text_center(XF_700_11, x0 + 59, 156 + face_baseline(XF_700_11, 13.75f), c[i].label, C_FG);
-      gfx_text_center(XF_600_10, x0 + 59, 169.75f + face_baseline(XF_600_10, 12.5f), c[i].meta, C_FG3);
+      /* centred, or cut with an ellipsis at the card's width (long file names) */
+      {
+         float lw = text_w(XF_700_11, c[i].label), mw = text_w(XF_600_10, c[i].meta);
+         if (lw <= 118) gfx_text_center(XF_700_11, x0 + 59, 156 + face_baseline(XF_700_11, 13.75f), c[i].label, C_FG);
+         else gfx_text_ell(XF_700_11, x0, 156 + face_baseline(XF_700_11, 13.75f), 118, c[i].label, C_FG);
+         if (mw <= 118) gfx_text_center(XF_600_10, x0 + 59, 169.75f + face_baseline(XF_600_10, 12.5f), c[i].meta, C_FG3);
+         else gfx_text_ell(XF_600_10, x0, 169.75f + face_baseline(XF_600_10, 12.5f), 118, c[i].meta, C_FG3);
+      }
    }
    {
       pick_c *s = &c[v->sel];
       if (s->below) foot = "Below the match line: probably not this game.";
+      else if (s->kind == ART_CUSTOM) foot = v->which ? "Your picture: 480\xC3\x97" "272 goes in as it is; other sizes are scaled to fill." : "Your picture: 144\xC3\x97" "80 goes in as it is; anything else is laid out like box art.";
       else if (s->kind == ART_PIC) foot = v->which ? "Your own picture, scaled to fill 480\xC3\x97" "272." : "Your own picture, fitted into the icon.";
       else if (s->kind == ART_OWN) foot = "Already on the Memory Stick; nothing to download.";
       else if (s->kind == ART_ENTRY) foot = "What the entry shows now.";
@@ -1329,6 +1381,17 @@ static void key_pick(view *v, int k)
       pick_c *s = &c[v->sel];
       art_choice *a = v->which ? &g->bg : &g->icon;
       char lab[128], msg[200];
+      if (s->kind == ART_CUSTOM || s->kind == ART_PIC)
+      {
+         /* checked before it is used: readable, decodable, not too big */
+         char why[96];
+         if (art_check(s->path, why, sizeof(why)) != 0)
+         {
+            snprintf(msg, sizeof(msg), "%s %s", s->label, why);
+            toast(msg, TOAST_WARN);
+            return;
+         }
+      }
       memset(a, 0, sizeof(*a));
       a->kind = s->kind;
       snprintf(a->path, PATHCAP, "%s", s->path);
@@ -1337,8 +1400,9 @@ static void key_pick(view *v, int k)
          snprintf(a->label, sizeof(a->label), "%s", g->cand[s->cand].region);
          a->conf = s->conf;
       }
-      else if (s->kind == ART_PIC)
+      else if (s->kind == ART_PIC || s->kind == ART_CUSTOM)
          snprintf(a->label, sizeof(a->label), "%s", s->label);
+      g->custom_msg[0] = 0;
       game_touch(g);
       art_label(a, lab, sizeof(lab));
       snprintf(msg, sizeof(msg), "%s: %s", v->which ? "Hero" : "Box art", lab);
@@ -1793,7 +1857,7 @@ static int settings_rows(srow *r)
    if (g_st.found) snprintf(r[7].small, 160, "%s%s%s", g_st.version, g_st.version[0] ? " \xC2\xB7 " : "", g_st.install);
    else snprintf(r[7].small, 160, "not found on the %s", g_st.label);
    snprintf(r[8].v, 64, "About GBAdhoc XMB");
-   snprintf(r[8].small, 160, "version 0.1.0-beta.2 + hw fixes (net, edges, logo)");
+   snprintf(r[8].small, 160, "version 0.1.0-beta.2 + hw fixes, icon layouts, custom/");
    return NSET;
 }
 

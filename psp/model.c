@@ -9,6 +9,7 @@
 #include <string.h>
 
 #include "util.h"
+#include "art.h"
 #include "../shared/text_fold.h"
 #include "../shared/xw_core.h"
 
@@ -24,7 +25,7 @@ int g_scan_ver;
 
 int game_has_icon(const game *g)
 {
-   return g->icon.kind != ART_NONE || (g->fit == FIT_TILE && g->bg.kind != ART_NONE);
+   return g->icon.kind != ART_NONE || (g->fit != FIT_FIT && g->bg.kind != ART_NONE);
 }
 
 int game_status(const game *g)
@@ -79,6 +80,7 @@ void art_label(const art_choice *a, char *out, unsigned cap)
    case ART_NONE: snprintf(out, cap, "None"); break;
    case ART_OWN: snprintf(out, cap, "GBAdhoc's own"); break;
    case ART_ENTRY: snprintf(out, cap, "The entry's own"); break;
+   case ART_CUSTOM: snprintf(out, cap, "Your picture \xC2\xB7 %s", a->label); break;
    case ART_NET:
       if (a->label[0])
          snprintf(out, cap, "Internet \xC2\xB7 %s", a->label);
@@ -372,12 +374,96 @@ static void scan_dir(const char *dir, int depth, const char *folder_label, const
    }
 }
 
+/* ---- the owner's own pictures: <app dir>/custom ----
+ * <ROM file name without extension>.png is that game's icon (box art, or a
+ * finished 144x80 ICON0), <stem>.bg.png its background (any size; 480x272
+ * goes in as it is).  .jpg/.jpeg/.bmp work too.  Names match without case. */
+
+char g_custom[MAX_CUSTOM][128];
+int g_ncustom;
+
+static int is_image_name(const char *n)
+{
+   return ends_with_i(n, ".png") || ends_with_i(n, ".jpg") || ends_with_i(n, ".jpeg") || ends_with_i(n, ".bmp");
+}
+
+void model_scan_custom(void)
+{
+   char d[PATHCAP];
+   SceUID dh;
+   SceIoDirent e;
+   g_ncustom = 0;
+   snprintf(d, sizeof(d), "%s/custom", g_st.app_dir);
+   dh = sceIoDopen(d);
+   if (dh < 0)
+   {
+      /* make it, so the owner finds where to put pictures */
+      mkdirs(d);
+      return;
+   }
+   memset(&e, 0, sizeof(e));
+   while (sceIoDread(dh, &e) > 0 && g_ncustom < MAX_CUSTOM)
+   {
+      if (!FIO_S_ISDIR(e.d_stat.st_mode) && e.d_name[0] != '.' && is_image_name(e.d_name) && strlen(e.d_name) < 128)
+         snprintf(g_custom[g_ncustom++], 128, "%s", e.d_name);
+      memset(&e, 0, sizeof(e));
+   }
+   sceIoDclose(dh);
+}
+
+int model_custom_for(const game *g, int bg, char *path, unsigned cap)
+{
+   int i;
+   size_t sl = strlen(g->stem);
+   for (i = 0; i < g_ncustom; i++)
+   {
+      const char *n = g_custom[i], *rest;
+      if (strncasecmp(n, g->stem, sl) != 0)
+         continue;
+      rest = n + sl;
+      if (bg ? strncasecmp(rest, ".bg.", 4) == 0 && strchr(rest + 4, '.') == NULL
+             : rest[0] == '.' && strchr(rest + 1, '.') == NULL)
+      {
+         snprintf(path, cap, "%s/custom/%s", g_st.app_dir, n);
+         return 0;
+      }
+   }
+   return -1;
+}
+
+/* the custom picture for one side, checked; 1 = chosen */
+static int use_custom(game *g, int bg)
+{
+   char p[PATHCAP], why[96];
+   art_choice *a = bg ? &g->bg : &g->icon;
+   if (model_custom_for(g, bg, p, sizeof(p)) != 0)
+      return 0;
+   if (art_check(p, why, sizeof(why)) != 0)
+   {
+      snprintf(g->custom_msg, sizeof(g->custom_msg), "custom/%s %s", base_name(p), why);
+      LOG("custom: %s", g->custom_msg);
+      return 0;
+   }
+   memset(a, 0, sizeof(*a));
+   a->kind = ART_CUSTOM;
+   snprintf(a->path, PATHCAP, "%s", p);
+   snprintf(a->label, sizeof(a->label), "%s", base_name(p));
+   return 1;
+}
+
 void model_default_art(game *g)
 {
+   int ci, cb;
    memset(&g->icon, 0, sizeof(g->icon));
    memset(&g->bg, 0, sizeof(g->bg));
-   g->fit = FIT_TILE;
-   if (g->entry >= 0)
+   g->fit = FIT_SIDE;
+   g->custom_msg[0] = 0;
+   /* the owner's own pictures (custom folder) come before anything else */
+   ci = use_custom(g, 0);
+   cb = use_custom(g, 1);
+   if (ci && cb)
+      return;
+   if (!ci && !cb && g->entry >= 0)
    {
       entry_t *e = &g_entries[g->entry];
       if (e->has_icon) { g->icon.kind = ART_ENTRY; snprintf(g->icon.path, PATHCAP, "%s/EBOOT.PBP", e->dir); }
@@ -385,12 +471,12 @@ void model_default_art(game *g)
       if (e->has_icon || e->has_pic)
          return;
    }
-   if (g->own_box[0])
+   if (!ci && g->own_box[0])
    {
       g->icon.kind = ART_OWN;
       snprintf(g->icon.path, PATHCAP, "%s", g->own_box);
    }
-   if (g->own_hero[0])
+   if (!cb && g->own_hero[0])
    {
       g->bg.kind = ART_OWN;
       snprintf(g->bg.path, PATHCAP, "%s", g->own_hero);
@@ -463,6 +549,7 @@ void model_scan(scan_progress p)
    }
    qsort(g_games, (size_t)g_ngames, sizeof(game), game_cmp);
    model_scan_entries();
+   model_scan_custom();
    for (i = 0; i < g_ngames; i++)
       model_default_art(&g_games[i]);
    s_prog = NULL;

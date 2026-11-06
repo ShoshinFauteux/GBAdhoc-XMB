@@ -14,9 +14,14 @@
 #define MAX_ENTRIES 400
 #define MAX_FOLDERS 16
 #define PATHCAP 256
+#define MAX_CUSTOM 256
 
-enum { ART_NONE = 0, ART_OWN, ART_NET, ART_PIC, ART_ENTRY };
-enum { FIT_TILE = 0, FIT_FIT, FIT_FILL };
+enum { ART_NONE = 0, ART_OWN, ART_NET, ART_PIC, ART_ENTRY, ART_CUSTOM };
+/* ICON0 layouts (art.c): box art over a blurred, darkened copy of the hero or
+ * itself; box art left + title right; filled, anchored at the top (title)
+ * band; filled with a mild horizontal stretch; fitted on transparency */
+enum { FIT_TILE = 0, FIT_SIDE, FIT_SMART, FIT_STRETCH, FIT_FIT, FIT_COUNT };
+const char *fit_name(int fit);           /* "Blur frame" */
 enum { IMG_NONE = 0, IMG_LOADING, IMG_READY, IMG_FAIL };
 enum { FETCH_NONE = 0, FETCH_OK, FETCH_OFFLINE, FETCH_RATE, FETCH_NOTFOUND, FETCH_FAIL };
 
@@ -60,7 +65,8 @@ typedef struct game
    char title[128];          /* the entry's XMB title (edited) */
    char own_box[PATHCAP], own_hero[PATHCAP];
    art_choice icon, bg;
-   int fit;
+   int fit;                  /* FIT_* */
+   char custom_msg[128];     /* why a custom/ picture of its was not used, "" */
    int ver;                  /* bumped on every art/title change */
    /* art lookup [W] */
    int fetch;                /* FETCH_* */
@@ -140,5 +146,13 @@ void model_scan_entries(void);
 void model_refresh_free(void);
 /* default art choices for a game from what is on the card */
 void model_default_art(game *g);
+
+/* The owner's pictures in <app dir>/custom: <ROM stem>.png = icon,
+ * <ROM stem>.bg.png = background.  model_scan_custom lists the folder
+ * (making it when missing); model_custom_for finds a game's file. */
+extern char g_custom[MAX_CUSTOM][128];
+extern int g_ncustom;
+void model_scan_custom(void);
+int model_custom_for(const game *g, int bg, char *path, unsigned cap);
 
 #endif
