@@ -11,6 +11,10 @@
 TARGET = xmbapp
 OBJS   = main.o gfx.o theme.o ui.o ui_kit.o jobs.o model.o names.o art.o util.o net.o xw_core_psp.o
 CFLAGS = -O2 -G0 -MMD -Wall -Wextra -Wno-unused-parameter -Wno-format-truncation -Wno-missing-field-initializers
+# make XMB_DEMO=1: the README's recordings (main.c, DEMO); never in a release
+ifeq ($(XMB_DEMO),1)
+CFLAGS += -DXMB_DEMO
+endif
 ASFLAGS = $(CFLAGS)
 LDFLAGS = -Wl,-Map,xmbapp.map
 LIBS   = -lpspgu -lmbedtls -lmbedx509 -lmbedcrypto -lz -lm -lpspwlan -lpsppower

@@ -1,0 +1,10 @@
+# One game: open Kirby (GBAdhoc's own hero, no box art yet), get its box art
+# from the internet live (libretro-thumbnails), review it, use it.
+home online idle pace:200 right left w2500
+pace:200 right right right right right w600
+rec:game
+w300 pace:700 x
+pace:260 down down down down w300
+x idle w2000
+x w1600 x w1500
+stop quit

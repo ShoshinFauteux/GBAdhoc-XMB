@@ -1,0 +1,7 @@
+# Make entry -> the new icon in the XMB's Game column.
+home online idle pace:200 right left w2500
+pace:200 right right right right x w1200
+rec:xmb
+w300 pace:230 down down down down down w400
+x idle w3500
+stop quit

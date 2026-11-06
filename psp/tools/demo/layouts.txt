@@ -1,0 +1,7 @@
+# Icon layouts: Golden Sun's ICON row, every layout, back to the default (Box + title).
+home online idle pace:200 right left w2500
+pace:200 right right right right x w1200
+rec:layouts
+w400 pace:260 down down down w300
+pace:1000 x x x x x
+w500 stop quit

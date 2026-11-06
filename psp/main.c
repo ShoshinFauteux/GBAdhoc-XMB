@@ -11,7 +11,15 @@
  * tokens: up down left right x o t s l r st (a press), wN (wait N ms),
  * home (wait for the library), idle (wait for the worker), shot:NAME
  * (log/NAME.bmp of the next frame), demo:WHAT[:GAME] (open a state, like
- * the design's ?demo=), quit.  Absent file = a normal run. */
+ * the design's ?demo=), quit.  Absent file = a normal run.
+ *
+ * DEMO (make XMB_DEMO=1 only; a release build has none of it).  For the
+ * README's recordings: <app dir>/xmbapp-demo.txt is the same script, one
+ * or more tokens per line, '#' to the end of a line a comment, plus
+ *   rec:NAME  append every frame to log/NAME.rgb (480x272 RGBX, raw)
+ *   stop      close it        pace:N  the wait after a press (default 450 ms)
+ * and the clock is virtual: each frame is exactly 1/60 s (util.c), so the
+ * footage is smooth however long a frame takes to write. */
 #include <pspkernel.h>
 #include <pspctrl.h>
 #include <pspdisplay.h>
@@ -214,7 +222,15 @@ static void netconf_update(void)
 
 /* ---- harness ---- */
 
+#ifdef XMB_DEMO
+static char g_script[16384];
+static double g_pace = 0.45;
+static SceUID g_rec_fd = -1;
+static uint32_t g_rec_buf[480 * 272];
+static unsigned g_rec_frames;
+#else
 static char g_script[2048];
+#endif
 static char *g_tok;
 static double g_wait_until;
 static char g_shot[64];
@@ -306,13 +322,36 @@ static void harness_step(void)
       ui_demo(tok + 5, a);
       g_wait_until = now_s() + 0.9;
    }
+#ifdef XMB_DEMO
+   else if (strncmp(tok, "rec:", 4) == 0)
+   {
+      char p[PATHCAP];
+      if (g_rec_fd >= 0) sceIoClose(g_rec_fd);
+      snprintf(p, sizeof(p), "%s/log/%s.rgb", g_st.app_dir, tok + 4);
+      g_rec_fd = sceIoOpen(p, PSP_O_WRONLY | PSP_O_CREAT | PSP_O_TRUNC, 0777);
+      g_rec_frames = 0;
+      LOG("demo rec %s fd %d", tok + 4, (int)g_rec_fd);
+   }
+   else if (strcmp(tok, "stop") == 0)
+   {
+      if (g_rec_fd >= 0) sceIoClose(g_rec_fd);
+      LOG("demo stop, %u frames", g_rec_frames);
+      g_rec_fd = -1;
+   }
+   else if (strncmp(tok, "pace:", 5) == 0)
+      g_pace = atoi(tok + 5) / 1000.0;
+#endif
    else if (strcmp(tok, "quit") == 0)
       g_quit = 1;
    else
    {
       int k = key_of(tok);
       if (k) { LOG("key %s", tok); ui_key(k); }
+#ifdef XMB_DEMO
+      g_wait_until = now_s() + g_pace;
+#else
       g_wait_until = now_s() + 0.45;
+#endif
    }
    g_tok += n;
    g_tok_t0 = now_s();
@@ -393,6 +432,29 @@ int main(int argc, char **argv)
       }
       free(buf);
    }
+#ifdef XMB_DEMO
+   path_join(ini, sizeof(ini), g_st.app_dir, "xmbapp-demo.txt");
+   if (read_all(ini, &buf, &n) == 0)
+   {
+      /* lines to one token stream; comments out */
+      size_t i, o = 0;
+      int com = 0;
+      for (i = 0; i < n && o + 2 < sizeof(g_script); i++)
+      {
+         char c = (char)buf[i];
+         if (c == '#') com = 1;
+         if (c == '\n' || c == '\r') { com = 0; c = ' '; }
+         if (com) continue;
+         if (c == '\t') c = ' ';
+         g_script[o++] = c;
+      }
+      g_script[o] = 0;
+      g_tok = g_script;
+      free(buf);
+      LOG("demo script, %u bytes", (unsigned)o);
+   }
+   demo_clock_start();
+#endif
    prefs_load();
    theme_set(g_prefs.theme);
    sceCtrlSetSamplingCycle(0);
@@ -417,6 +479,18 @@ int main(int argc, char **argv)
       else
          gfx_frame_end();
       jobs_frame_end();
+#ifdef XMB_DEMO
+      demo_clock_tick();
+      if (g_rec_fd >= 0)
+      {
+         int stride, y;
+         const uint32_t *px = gfx_front_pixels(&stride);
+         for (y = 0; y < 272; y++)
+            memcpy(&g_rec_buf[y * 480], &px[y * stride], 480 * 4);
+         sceIoWrite(g_rec_fd, g_rec_buf, sizeof(g_rec_buf));
+         g_rec_frames++;
+      }
+#endif
       if (g_shot[0])
       {
          char p[PATHCAP];

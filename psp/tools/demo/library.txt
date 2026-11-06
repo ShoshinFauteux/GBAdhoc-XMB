@@ -1,0 +1,11 @@
+# Your library: the boot scan (library_a), then the filmstrip with its art,
+# browsing and the L/R filters (library).  The two are joined in the edit.
+rec:library_a
+home
+stop
+home online idle pace:200 right left w2500
+rec:library
+w300 pace:650 right right right right
+w500 pace:1100 r l
+pace:650 right right w600
+stop quit

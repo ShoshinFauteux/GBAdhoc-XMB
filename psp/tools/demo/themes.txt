@@ -1,0 +1,8 @@
+# Five themes: Settings > Theme, Mono -> Graphite -> Slate -> Teal -> Classic -> Mono.
+home online idle pace:200 right left w2500
+rec:themes
+w300 pace:600 st
+pace:200 down down down down down w400
+pace:1300 right right right right
+pace:700 right o w1000
+stop quit

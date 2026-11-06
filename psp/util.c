@@ -10,6 +10,38 @@
 #include <string.h>
 #include <math.h>
 
+#ifdef XMB_DEMO
+/* the demo's virtual clock (main.c): 1/60 s a frame, from the real time at start */
+static volatile long long g_demo_t0_us = -1;
+static volatile unsigned g_demo_frames;
+
+void demo_clock_start(void)
+{
+   g_demo_t0_us = (long long)sceKernelGetSystemTimeWide();
+}
+
+void demo_clock_tick(void)
+{
+   g_demo_frames++;
+}
+
+static long long clock_us(void)
+{
+   if (g_demo_t0_us < 0)
+      return (long long)sceKernelGetSystemTimeWide();
+   return g_demo_t0_us + (long long)g_demo_frames * 1000000LL / 60;
+}
+
+double now_s(void)
+{
+   return (double)clock_us() / 1e6;
+}
+
+unsigned now_ms(void)
+{
+   return (unsigned)(clock_us() / 1000);
+}
+#else
 double now_s(void)
 {
    return (double)sceKernelGetSystemTimeWide() / 1e6;
@@ -19,6 +51,7 @@ unsigned now_ms(void)
 {
    return (unsigned)(sceKernelGetSystemTimeWide() / 1000);
 }
+#endif
 
 float clampf(float v, float lo, float hi)
 {

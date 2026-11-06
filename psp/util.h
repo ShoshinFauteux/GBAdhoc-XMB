@@ -7,6 +7,10 @@
 
 double now_s(void);                       /* seconds since boot, monotonic */
 unsigned now_ms(void);
+#ifdef XMB_DEMO
+void demo_clock_start(void);              /* main.c's DEMO: the virtual clock */
+void demo_clock_tick(void);
+#endif
 
 /* CSS cubic-bezier(x1,y1,x2,y2) at progress t in [0,1] */
 float bezier(float x1, float y1, float x2, float y2, float t);

@@ -26,9 +26,9 @@
 </p>
 
 <p align="center">
-  <img src="docs/img/hero.png" alt="GBAdhoc XMB for Windows, with Pokemon Emerald's entry open and its XMB preview, and in front of it a PSP whose screen shows GBAdhoc XMB's library with Golden Sun selected" width="880">
+  <img src="docs/img/hero.webp" alt="Animation: GBAdhoc XMB for Windows with Pokemon Emerald's entry open, and a PSP in front of it showing the PSP app's library. The Windows app recedes and the PSP turns to the camera; its screen plays the PSP app at work: the library, getting art from the internet, icon layouts, making four entries, an entry starting GBAdhoc with Golden Sun, and the five themes" width="880">
   <br>
-  <sub><b>The Windows app and the PSP app</b>, in the Mono theme. Both screens captured from the real apps, on a test folder of placeholder ROMs; the PSP is a 3D render of the <a href="https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761">Sony PSP model</a> by <a href="https://sketchfab.com/strov">Ilya Ostrovsky</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
+  <sub><b>The Windows app and the PSP app</b>, in the Mono theme. Both screens are the real apps, recorded on a test card of well-known games with their real box art and hero art; the PSP is a 3D render of the <a href="https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761">Sony PSP model</a> by <a href="https://sketchfab.com/strov">Ilya Ostrovsky</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
 </p>
 
 **GBAdhoc XMB is a companion to [GBAdhoc](https://github.com/ShoshinFauteux/GBAdhoc),** the
@@ -60,41 +60,55 @@ ROMs are never copied.**
 <table>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/img/psp-library.png" alt="The PSP app's library: Golden Sun selected in the filmstrip, its details, and a preview of where it will sit in the XMB" width="100%">
+<img src="docs/img/psp-library.webp" alt="Animation: the PSP app starts and scans the Memory Stick, then the library: a filmstrip of box art, the selection moving from Advance Wars 2 to Golden Sun with a preview of each game's place in the XMB, and the L and R filters" width="100%">
 <b>Your library, on the PSP</b><br>
 <sub>Every ROM in GBAdhoc's <code>roms</code> folder, recognised by its No-Intro name, with a preview of its place in the XMB. L and R filter by what is in the XMB, what is not, and what needs attention.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="docs/img/psp-game.png" alt="The PSP app's game screen for Golden Sun: title, box art, hero and icon rows, Get art from the internet and Make entry" width="100%">
+<img src="docs/img/psp-game.webp" alt="Animation: Kirby and the Amazing Mirror opened with no box art yet; Get art from the internet finds three box art matches on libretro-thumbnails and the hero art, and the chosen box art goes into the XMB preview" width="100%">
 <b>One game, your way</b><br>
-<sub>Change the title with the on-screen keyboard, pick the box art and the hero art, or use a picture from the PSP. Then <i>Make entry</i>.</sub>
+<sub><i>Get art from the internet</i>: box art from libretro-thumbnails and hero art from GBAdhoc-heroart, over the PSP's own Wi-Fi. Or change the title, pick the art yourself, or use a picture from the PSP.</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/img/psp-make-all.png" alt="The PSP app's Make 9 entries dialog, showing each icon that will be written to ms0:/PSP/GAME" width="100%">
-<b>All of them at once</b><br>
-<sub><i>Make all entries</i> shows every icon before it writes, and how much space they take. Games with no art yet get a title card.</sub>
+<img src="docs/img/psp-layouts.webp" alt="Animation: Golden Sun's ICON row cycling through the icon layouts, Smart fill, Stretch, Fitted and Blur frame, and back to the default Box and title, in the XMB preview" width="100%">
+<b>Your icon, your layout</b><br>
+<sub>The icon is composed from the box art and the hero art: <i>Box + title</i> by default, or Smart fill, Stretch, Fitted and Blur frame. The preview shows each one in the XMB.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="docs/img/psp-in-the-xmb.png" alt="The PSP app's arrival screen: Golden Sun's new icon in the XMB's Game column, marked In the XMB" width="100%">
-<b>In the XMB</b><br>
-<sub>The new icon, where it will be in the Game column. Quit to the XMB and it is there.</sub>
+<img src="docs/img/psp-make.webp" alt="Animation: four games marked in the library, Library actions, the Make 4 entries dialog with each icon, and the queue writing them one by one, then the new icons in the XMB" width="100%">
+<b>Several at once, or all of them</b><br>
+<sub>Mark the games you want, or choose <i>Make all entries</i>. The app shows every icon before it writes, and how much space they take.</sub>
 </td>
 </tr>
 <tr>
 <td width="50%" valign="top">
-<img src="docs/img/desktop-entry.png" alt="The Windows app with Pokemon Emerald's entry open: an XMB preview, the title, the box art and the hero art" width="100%">
+<img src="docs/img/psp-xmb.webp" alt="Animation: Make entry for Golden Sun, the new icon over its hero art in the XMB's Game column, then the entry starting GBAdhoc, which loads Golden Sun and boots it" width="100%">
+<b>In the XMB, and straight into the game</b><br>
+<sub>Quit to the XMB and the new icon is there, over its hero art. Pick it and GBAdhoc opens with the game.</sub>
+</td>
+<td width="50%" valign="top">
+<img src="docs/img/psp-themes.webp" alt="Animation: Settings, Theme: the app's colours changing from Mono to Graphite, Slate, Teal and Classic, and back to Mono" width="100%">
+<b>Five themes</b><br>
+<sub>Mono, the default, Graphite, Slate, Teal and Classic, in Settings. The Windows app has the same five.</sub>
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+<img src="docs/img/desktop-entry.webp" alt="Animation: the Windows app's library of box art cards; Pokemon Emerald opened, its XMB preview with and without the hero background, Make entry, and Pokemon Emerald is in the XMB" width="100%">
 <b>The Windows app</b><br>
 <sub>The same design over USB. It finds the PSP by itself, shows every game as a card, and previews each entry in the XMB before it writes.</sub>
 </td>
 <td width="50%" valign="top">
-<img src="docs/img/desktop-queue.png" alt="The Windows app after a queue: 7 entries made, each listed with how it was made" width="100%">
+<img src="docs/img/desktop-queue.webp" alt="Animation: four games chosen in the Windows app and Make 4 entries; the PSP drops off USB at the third one, the queue stops with nothing half-written, the PSP comes back, Resume, and all four are made" width="100%">
 <b>Safe to unplug</b><br>
 <sub>Each entry is written to a staging folder, checked, and only then moved into place. Pull the cable mid-queue and nothing is left half-written; plug it back in and the queue resumes.</sub>
 </td>
 </tr>
 </table>
+
+<sub>Every animation is the real app at work, played by a scripted fixture (no hands), on a test card of well-known games with their real box art and hero art: the PSP app in PPSSPP, the Windows app on a test folder. Two PPSSPP stand-ins: Kirby's hero art comes from the app's download cache (PPSSPP cannot decode the full-size master; its box art is fetched live), and the entry starts GBAdhoc through a demo build of the launcher, because PPSSPP does not emulate the custom firmware call a real PSP uses. To re-record them: <a href="psp/tools/demo/record_all.sh">psp/tools/demo/record_all.sh</a> and <a href="desktop/tests/demo/record_desktop.sh">desktop/tests/demo/record_desktop.sh</a>.</sub>
 
 ## Play online: host from your PC
 
@@ -107,9 +121,9 @@ your PC passes the traffic along. `relay.rayquaza.ca` is only a directory that t
 into your PC's address; game traffic never goes through it.
 
 <p align="center">
-  <img src="docs/img/desktop-online.png" alt="The Windows app's Online tab while hosting: Ready, friends can join with code; a Copy message button with the sentence to send; the room code and the invite code; the room with two players, both Direct" width="880">
+  <img src="docs/img/desktop-online.webp" alt="Animation: the Windows app's Online tab; Host online room; the router opens the ports and the app says Ready, friends can join with code, with the message to send, the room code and the invite code; then two PSPs join the room, both Direct" width="880">
   <br>
-  <sub><b>Hosting.</b> Captured from the real app in a loopback test: the router is a simulated UPnP device, the directory runs locally, and the two players are GBAdhoc's simulated test consoles on port 37440, so the invite code is the 11-character form (8 characters on GBAdhoc's default port).</sub>
+  <sub><b>Hosting.</b> Recorded from the real app in a loopback test: the router is a simulated UPnP device, the directory runs locally, and the two players are GBAdhoc's simulated test consoles on port 37440, so the invite code is the 11-character form (8 characters on GBAdhoc's default port).</sub>
 </p>
 
 **On the PC (the host):**

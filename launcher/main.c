@@ -180,10 +180,24 @@ int main(int argc, char *argv[])
    param.args = (SceSize)a;
    param.argp = args;
    param.key  = "game";
+#ifdef XMB_DEMO
+   /* DEMO (make XMB_DEMO=1; never in a release or in an entry the apps make):
+    * PPSSPP does not emulate systemctrl, so the README's recording of an entry
+    * starting GBAdhoc uses the user-mode call it does emulate, same argv. */
+   {
+      struct SceKernelLoadExecParam p;
+      memset(&p, 0, sizeof(p));
+      p.size = sizeof(p);
+      p.args = (SceSize)a;
+      p.argp = args;
+      rc = sceKernelLoadExec(eboot, &p);
+   }
+#else
    if (strncasecmp(eboot, "ef0:", 4) == 0)
       rc = sctrlKernelLoadExecVSHEf2(eboot, &param);
    else
       rc = sctrlKernelLoadExecVSHMs2(eboot, &param);
+#endif
 
    /* Only returns on failure. */
    snprintf(path, sizeof(path), "%s (error %08x)", eboot, (unsigned)rc);

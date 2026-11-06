@@ -6,6 +6,10 @@
 TARGET = launcher
 OBJS   = main.o
 CFLAGS = -O2 -G0 -Wall -Wextra
+# make XMB_DEMO=1: the README recording's launcher (main.c); never a release, never embedded
+ifeq ($(XMB_DEMO),1)
+CFLAGS += -DXMB_DEMO
+endif
 ASFLAGS = $(CFLAGS)
 LIBS   = -lpspsystemctrl_user
 EXTRA_TARGETS   = EBOOT.PBP

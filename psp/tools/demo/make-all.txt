@@ -1,0 +1,9 @@
+# Several at once: mark four games, Library actions > Make 4 marked entries:
+# every icon first, then the queue.  (Make all entries is the item below it.)
+home online idle pace:200 right left w2500
+rec:make-all
+w300 pace:380 right s right right right s right right s right right s
+w300 pace:800 t
+x idle w2200
+x idle w2000
+stop quit

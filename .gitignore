@@ -6,6 +6,7 @@
 *.prx
 PARAM.SFO
 EBOOT.PBP
+EBOOT-demo.PBP
 desktop/build/
 desktop/dist/
 psp/gen/.inst/
