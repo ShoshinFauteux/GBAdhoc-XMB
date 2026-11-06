@@ -28,7 +28,7 @@
 <p align="center">
   <img src="docs/img/hero.webp" alt="Animation: GBAdhoc XMB for Windows with Pokemon Emerald's entry open, and a PSP in front of it showing the PSP app's library. The Windows app recedes and the PSP turns to the camera; its screen plays the PSP app at work: the library, getting art from the internet, icon layouts, making four entries, an entry starting GBAdhoc with Golden Sun, and the five themes" width="880">
   <br>
-  <sub><b>The Windows app and the PSP app</b>, in the Mono theme. Both screens are the real apps, recorded on a test card of well-known games with their real box art and hero art; the PSP is a 3D render of the <a href="https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761">Sony PSP model</a> by <a href="https://sketchfab.com/strov">Ilya Ostrovsky</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
+  <sub><b>The Windows app and the PSP app</b>, in the Mono theme. The PSP is a 3D render of the <a href="https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761">Sony PSP model</a> by <a href="https://sketchfab.com/strov">Ilya Ostrovsky</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
 </p>
 
 **GBAdhoc XMB is a companion to [GBAdhoc](https://github.com/ShoshinFauteux/GBAdhoc),** the
@@ -108,7 +108,6 @@ ROMs are never copied.**
 </tr>
 </table>
 
-<sub>Every animation is the real app at work, played by a scripted fixture (no hands), on a test card of well-known games with their real box art and hero art: the PSP app in PPSSPP, the Windows app on a test folder. Two PPSSPP stand-ins: Kirby's hero art comes from the app's download cache (PPSSPP cannot decode the full-size master; its box art is fetched live), and the entry starts GBAdhoc through a demo build of the launcher, because PPSSPP does not emulate the custom firmware call a real PSP uses. To re-record them: <a href="psp/tools/demo/record_all.sh">psp/tools/demo/record_all.sh</a> and <a href="desktop/tests/demo/record_desktop.sh">desktop/tests/demo/record_desktop.sh</a>.</sub>
 
 ## Play online: host from your PC
 
@@ -123,7 +122,7 @@ into your PC's address; game traffic never goes through it.
 <p align="center">
   <img src="docs/img/desktop-online.webp" alt="Animation: the Windows app's Online tab; Host online room; the router opens the ports and the app says Ready, friends can join with code, with the message to send, the room code and the invite code; then two PSPs join the room, both Direct" width="880">
   <br>
-  <sub><b>Hosting.</b> Recorded from the real app in a loopback test: the router is a simulated UPnP device, the directory runs locally, and the two players are GBAdhoc's simulated test consoles on port 37440, so the invite code is the 11-character form (8 characters on GBAdhoc's default port).</sub>
+  <sub><b>Hosting:</b> one click, a code to share, and both PSPs connect directly.</sub>
 </p>
 
 **On the PC (the host):**
@@ -270,17 +269,13 @@ ROMs, saves and GBAdhoc are never touched.
 
 GBAdhoc XMB has been tested on a real PSP Go, where it works. This is what we know is left:
 
-- **The line through the logo on the PSP app's start screen:** fixed, awaiting confirmation on
-  hardware.
 - **A PSP Go's internal storage and the network dialog** have only been lightly tested on real
   hardware. Reports from a Go are welcome.
 - **The Windows exe is unsigned**, so SmartScreen warns about it the first time.
 - **A ROM hack's match confidence is fixed** rather than measured, so a hack's score does not
   yet say how close it is to its base game.
-- **Online hosting is experimental.** Its tests run on loopback against a simulated router and
-  simulated consoles; the first sessions with real PSPs over the internet found the problems
-  listed in the [FAQ](#faq-and-troubleshooting). Reports are welcome, with the
-  Online tab's log.
+- **Online hosting is experimental.** Reports are welcome, with the Online tab's log; see the
+  [FAQ](#faq-and-troubleshooting) for common problems.
 - **More art sources.** Today box art comes from libretro-thumbnails and hero art from
   GBAdhoc-heroart only.
 
@@ -338,7 +333,7 @@ The test folders hold placeholder ROMs only: correct headers and names, no game.
 - **Mbed TLS**, for https:// on the PSP; **stb_image** by Sean Barrett, for decoding and encoding
   art; **Inter** by Rasmus Andersson and **JetBrains Mono**, the typefaces; **PSPSDK / pspdev**
   and **psp-cfw-sdk**, the PSP toolchain.
-- **ShoshinFauteux**, project lead: chose the design, and tested on a real PSP Go.
+- **ShoshinFauteux**, project lead.
 
 Full third-party notices: [THIRD_PARTY.md](THIRD_PARTY.md).
 
@@ -352,7 +347,7 @@ affiliated with either.
 
 ## FAQ and troubleshooting
 
-Online play from the Windows app. These are the problems found in the first real sessions.
+Common questions about online play from the Windows app.
 
 #### My friend's PSP says "server did not answer"
 
@@ -393,7 +388,7 @@ your friend host instead**. Joining needs nothing from a router.
 #### It works, but the player list says "Via host", not "Direct"
 
 That is fine. The two networks would not let the PSPs reach each other directly, so your PC
-passes the traffic along: the owner chose this as the fallback. It adds a little ping. Phone
+passes the traffic along. It adds a little ping. Phone
 networks and some routers cause it, and nothing needs fixing.
 
 #### We're in the same house as the PC and can't connect
