@@ -9,7 +9,24 @@
 
   function ports(st) { const p = (st && st.port) || 27420; return `UDP ${p}-${p + 1}`; }
   function relayAddr(ip, st) { const p = (st && st.port) || 27420; return p === 27420 ? ip : `${ip}:${p}`; }
-  function sharedTip() { return `For internet play, use the shared relay instead: leave each PSP's online server at its default (${SHARED}); this PC is not needed.`; }
+  function sharedTip() { return `Joining needs nothing from a router, so the easy way round is to let your friend host on their PC. Or skip the PC: on the PSPs, Create room on the shared server (${SHARED}, the default), which needs nothing from either router.`; }
+  // what a friend types, best first: the room code while the directory has it, else the invite
+  function bestCode(st) {
+    const cd = (st && st.codes) || {}, dir = cd.directory || {};
+    if (cd.room && cd.roomRegistered && dir.state === 'registered') return { kind: 'room', code: cd.room, backup: cd.invite || '' };
+    if (cd.invite) return { kind: 'invite', code: cd.invite, backup: '' };
+    return null;
+  }
+  // the sentence the big Copy button puts on the clipboard (paste it in a chat)
+  function shareText(st) {
+    const b = bestCode(st), cd = (st && st.codes) || {};
+    const how = 'On your PSP: GBAdhoc > Wireless > Online > Join with code.';
+    const same = 'Use the same GBAdhoc build as me, with gba_bios.bin in place.';
+    if (st && st.verdict === 'open' && b)
+      return `Join my GBAdhoc room: ${b.code}. ${how}${b.backup ? ` If that code does not work, use ${b.backup}.` : ''} ${same}`;
+    if (cd.inviteLan) return `Join my GBAdhoc room on our Wi-Fi: ${cd.inviteLan}. ${how} ${same}`;
+    return '';
+  }
 
   // What the state means, in words: {tone, title, text, shared}
   function describe(st) {
@@ -25,9 +42,11 @@
         if (dir.state === 'failed')
           return { tone: 'warn', title: 'Hosting on this PC · the directory is unreachable',
             text: `${dir.name || SHARED} did not take the room code${dir.error ? ' (' + dir.error + ')' : ''}, so nobody can look it up right now. The invite code needs no server: share that instead. The room keeps trying to register every 60 s.`, shared: false };
-        text += ' Players anywhere can join with the room code or the invite code.';
+        text = `${ports(st)} open via UPnP. ` + text + ' Players anywhere can join with the room code or the invite code.';
         if (rel.state === 'ok') text += ' The shared relay sees the same address.';
         else if (rel.state === 'noanswer' || rel.state === 'nodns') text += ' Not verified from outside: the shared relay did not answer.';
+        const b = bestCode(st);
+        if (b) return { tone: 'ok', title: `Ready: friends can join with ${b.kind === 'room' ? 'code' : 'invite code'} ${b.code}`, text, shared: false };
         return { tone: 'ok', title: `Hosting on this PC · ${ports(st)} open via UPnP`, text, shared: false };
       }
       case 'cgnat':
@@ -41,8 +60,9 @@
     // lan-only
     if (up.state === 'off') return { tone: 'warn', title: 'Hosting for this network only', text: 'Port mapping is off, so only PSPs on this network can join (or forward the ports on your router by hand).', shared: true };
     if (up.state === 'conflict') return { tone: 'warn', title: 'The port is taken on your router', text: `${up.detail || ''} Pick another port in Settings below. PSPs on this network can still join.`.trim(), shared: true };
-    if (up.state === 'failed') return { tone: 'warn', title: "Your router didn't open a port", text: `${up.detail || 'The router refused the port mapping.'} Turn on UPnP in the router's settings, or forward ${ports(st)} to this PC by hand. PSPs on this network can still join.`, shared: true };
-    return { tone: 'warn', title: "Your router didn't open a port", text: `No UPnP router answered. Turn on UPnP in the router's settings, or forward ${ports(st)} to ${(st.lan || [])[0] || 'this PC'} by hand. Until then only PSPs on this network can join.`, shared: true };
+    const fix = `The fix: turn on UPnP in your router's settings (a provider gateway you manage from a phone app has it, or Port forwarding, in that app), or forward ${ports(st)} to ${(st.lan || [])[0] || 'this PC'}; then Stop and Host again.`;
+    if (up.state === 'failed') return { tone: 'warn', title: "Your router didn't open a port, so only this network can join", text: `${up.detail || 'The router refused the port mapping.'} ${fix} PSPs on this network can join already.`, shared: true };
+    return { tone: 'warn', title: "Your router didn't open a port, so only this network can join", text: `No UPnP router answered. ${fix} PSPs on this network can join already.`, shared: true };
   }
 
   // The two codes a friend types on the PSP (Wireless › Online › Join with code), as the
@@ -66,10 +86,12 @@
     const invite = `<div class="codebox"><div class="lbl">Invite code <span class="hint" title="This PC's address and port plus a check character, Crockford base32 (no I, L, O or U).">${inv ? len(inv) : 8} characters · no server</span></div>
         <div class="big inv">${inv ? esc(inv) : '—'}</div><div class="sub">${inv ? (view.showIp ? 'Encodes this PC\'s public address' : 'Encodes this PC\'s public address (hidden above, but anyone with the code can read it)') + `${len(inv) === 11 ? ' and its port' : ', the default port,'} and a check character. No server needed.` : 'No public address found yet, so there is no invite code for the internet.'}</div>
         <div class="acts">${inv ? `<button class="b sm primary" data-copy="${esc(inv)}">Copy</button>` : ''}</div>
-        ${lanInv ? `<div class="sub lan">For a PSP on this network: <span class="mono">${esc(lanInv)}</span> <button class="b sm" data-copy="${esc(lanInv)}">Copy</button></div>` : ''}</div>`;
+        ${lanInv ? `<div class="sub lan">Same house or Wi-Fi as this PC? Use <span class="mono">${esc(lanInv)}</span> <button class="b sm" data-copy="${esc(lanInv)}">Copy</button></div>` : ''}</div>`;
     const order = dirOff || dirDown ? [invite, room] : [room, invite];
-    return `<div class="sec codes"><h3>Tell your friend</h3><div class="coderow">${order.join('')}</div>
-      <div class="srow"><div class="t"><b>On their PSP</b><small class="p">Wireless › Online › <b>Join with code</b>, then type either code (one PSP creates the room with it, the other joins). GBAdhoc with online play, Settings › Online play on. PSPs on this network join the same way.</small></div></div></div>`;
+    const msg = shareText(st);
+    const share = msg ? `<div class="oshare"><div class="t"><small>Send this to your friend</small><div class="msg" id="on-share">${esc(msg)}</div></div><button class="b primary big" data-copy="${esc(msg)}" data-copylabel="the invite message" id="on-copyshare">Copy message</button></div>` : '';
+    return `<div class="sec codes"><h3>Tell your friend</h3>${share}<div class="coderow">${order.join('')}</div>
+      <div class="srow"><div class="t"><b>On their PSP</b><small class="p">Wireless › Online › <i>Join with code</i>, then type either code (one PSP creates the room with it, the other joins). GBAdhoc with online play, Settings › Online play on. PSPs on this network join the same way.</small></div></div></div>`;
   }
 
   function fmtDur(s) { s = Math.max(0, Math.floor(s || 0)); if (s < 60) return s + ' s'; if (s < 3600) return Math.floor(s / 60) + ' min ' + (s % 60) + ' s'; return Math.floor(s / 3600) + ' h ' + Math.floor(s % 3600 / 60) + ' min'; }
@@ -179,7 +201,13 @@
         <div class="sec"><h3>Settings</h3>
           <div class="srow"><div class="t"><b>Port</b><small class="p">UDP, and the next one up for the address check. GBAdhoc's default is 27420; another port makes the invite code 11 characters (it has to carry the port)</small></div><input class="num" id="on-port" type="number" min="1024" max="65534" value="${esc(view.port || 27420)}" ${running ? 'disabled' : ''}></div>
           <div class="srow"><div class="t"><b>Open the ports with UPnP</b><small class="p">Asks your router to forward them to this PC while you host, and removes them when you stop</small></div><span class="tog ${view.upnp !== false ? 'on' : ''}" id="on-upnp" ${running ? 'aria-disabled="true"' : ''}></span></div></div>
+          <div class="srow"><div class="t"><b>Host when GBAdhoc XMB starts</b><small class="p">Opens the room as soon as the app opens, with the settings above. Off by default.</small></div><span class="tog ${view.autoHost ? 'on' : ''}" id="on-auto"></span></div>
           <div class="srow"><div class="t"><b>List the room in the directory</b><small class="p">Registers "this room code is at this PC" on ${esc(SHARED)} so a four-letter code works from anywhere. Off, only the invite code works. The directory stores the code and this PC's address while you host; no names, no game traffic. Default on (the owner may change it).</small></div><span class="tog ${view.directory !== false ? 'on' : ''}" id="on-dir" ${running ? 'aria-disabled="true"' : ''}></span></div>
+        <div class="sec"><h3>If a friend can't join</h3>
+          <div class="srow"><div class="t"><b>Same GBAdhoc, same BIOS</b><small class="p">Both players need the same GBAdhoc build and <span class="mono">gba_bios.bin</span> in GBAdhoc's folder (PPSSPP players too), or the games desync.</small></div></div>
+          <div class="srow"><div class="t"><b>On a phone hotspot</b><small class="p">If the phone is also on Wi-Fi, many phones (Samsung and others) share that Wi-Fi instead of mobile data. Turn the phone's Wi-Fi off.</small></div></div>
+          <div class="srow"><div class="t"><b>In the same house as this PC</b><small class="p">The room code finds this PC over your own network by itself. With an invite code, use the <i>same house</i> code under it: many routers do not loop their public address back.</small></div></div>
+          <div class="srow"><div class="t"><b>A PSP hosting instead</b><small class="p">Needs UDP 27500 forwarded to that PSP. Letting a PC host is easier: GBAdhoc XMB opens its own ports.</small></div></div></div>
         <div class="sec"><h3>Before you host</h3>
           <div class="srow"><div class="t"><b>No game files</b><small class="p" id="on-nofiles">${esc(NO_FILES)}</small></div></div>
           <div class="srow"><div class="t"><b>Your address</b><small class="p">A guest on the internet connects to this PC, so they see its public IP address (with the shared relay, nobody sees anyone's).</small></div></div>
@@ -193,5 +221,5 @@
   // the address the Copy button of the public row copies (kept out of the page until asked)
   function publicAddr(st) { const up = (st && st.upnp) || {}, rel = (st && st.relay) || {}; const pub = rel.state === 'ok' && rel.pub ? rel.pub : up.wan; return pub ? relayAddr(pub, st) : ''; }
 
-  root.ONLINE = { describe, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, codesHTML, conflictHTML, NO_FILES, SHARED };
+  root.ONLINE = { describe, shareText, bestCode, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, codesHTML, conflictHTML, NO_FILES, SHARED };
 })(typeof window !== 'undefined' ? window : globalThis);

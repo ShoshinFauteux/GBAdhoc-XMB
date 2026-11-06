@@ -12,6 +12,9 @@
  *   test_online discovery PORT CLIENT OUT the room code in a directory (in-process, on
  *                                         127.0.0.1) and the invite code: one console joins
  *                                         by LOOKUP, one by the invite, no server
+ *   test_online directory PORT SECS       only that directory, on 127.0.0.1:PORT, for SECS
+ *                                         seconds (the README screenshot rig points the real
+ *                                         app at it with XMB_SHARED_RELAY)
  */
 #include "../../online.h"
 #include "../../upnp.h"
@@ -778,6 +781,15 @@ int main(int argc, char **argv)
       t_loopback((unsigned)atoi(argv[2]), argv[3], argv[4]);
    else if (argc >= 5 && !strcmp(argv[1], "discovery"))
       t_discovery((unsigned)atoi(argv[2]), argv[3], argv[4]);
+   else if (argc >= 4 && !strcmp(argv[1], "directory"))
+   {
+      CHECK(d_start((unsigned)atoi(argv[2])) == 0, "directory on 127.0.0.1:%s", argv[2]);
+      if (!fails)
+      {
+         Sleep((DWORD)atoi(argv[3]) * 1000u);
+         d_stop();
+      }
+   }
    else
    {
       printf("usage: see test_online.c\n");

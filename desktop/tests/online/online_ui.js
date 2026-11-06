@@ -100,6 +100,33 @@ for (const [name, o, title, shared] of cases) {
   const nopub = O.statusHTML(S({ codes: Object.assign({}, codes, { invite: '' }) }), {});
   check('no public address: no internet invite, says why', /no invite code for the internet/.test(nopub));
   check('directory setting in Settings', /List the room in the directory/.test(O.html(S({ codes }), null, {})));
+  // one plain status and one sentence to paste (2026-11-05 streamlining)
+  check('ready: the banner names the room code', O.describe(S({ codes })).title === 'Ready: friends can join with code KQTR', O.describe(S({ codes })).title);
+  check('ready: the banner still says the ports are open', /UDP 27420-27421 open via UPnP/.test(O.describe(S({ codes })).text));
+  check('ready, directory down: the banner names the invite code', /^Ready: friends can join with invite code SC07-2AGV$/.test(O.describe(down).title) || /directory is unreachable/.test(O.describe(down).title));
+  const msg = O.shareText(S({ codes }));
+  check('share: room code, how to join, the backup invite, same build and BIOS',
+    /^Join my GBAdhoc room: KQTR\./.test(msg) && /Join with code/.test(msg) && /use SC07-2AGV/.test(msg) && /gba_bios\.bin/.test(msg), msg);
+  check('share: never the public address', !msg.includes('203.0.113.7'));
+  check('share: one big Copy button carries it', h.includes('id="on-copyshare"') && h.includes('data-copylabel="the invite message"'));
+  const regging = S({ codes: Object.assign({}, codes, { roomRegistered: false, directory: { state: 'registering', tries: 0 } }) });
+  check('share: the invite while the room code is not registered yet', /^Join my GBAdhoc room: SC07-2AGV\./.test(O.shareText(regging)), O.shareText(regging));
+  const lanMsg = O.shareText(S({ verdict: 'lan-only', upnp: { state: 'none', wan: '' }, codes: Object.assign({}, codes, { invite: '' }) }));
+  check('share: this network only offers the same-house code', /on our Wi-Fi: R2M0-251N-XYZ/.test(lanMsg), lanMsg);
+  check('share: nothing to share when not hosting', O.shareText(S({ running: false, codes: {} })) === '');
+  check('the same-house code is explained', /Same house or Wi-Fi as this PC/.test(h));
+}
+// router blocks hosting: one fix, said plainly; troubleshooting from real sessions; auto host
+{
+  const none = O.describe(S({ verdict: 'lan-only', upnp: { state: 'none', detail: '', wan: '' } }));
+  check('blocked: the fix is named', /The fix: turn on UPnP/.test(none.text) && /forward UDP 27420-27421 to 192\.168\.1\.20/.test(none.text), none.text);
+  check('blocked: letting the friend host is offered', /let your friend host/.test(O.html(S({ verdict: 'lan-only', upnp: { state: 'none', wan: '' } }), null, {})));
+  const h = O.html(S({ running: false }), null, {});
+  check('troubleshooting: same build and BIOS', /same GBAdhoc build/.test(h) && /gba_bios\.bin/.test(h));
+  check('troubleshooting: phone hotspot on Wi-Fi', /Turn the phone's Wi-Fi off/.test(h));
+  check('troubleshooting: a PSP hosting needs UDP 27500', /UDP 27500/.test(h));
+  check('settings: host when the app starts, off by default', /Host when GBAdhoc XMB starts/.test(h) && !/id="on-auto"[^>]*class="tog on"/.test(h) && h.includes('<span class="tog " id="on-auto">'));
+  check('settings: host when the app starts, on', O.html(S({ running: false }), null, { autoHost: true }).includes('<span class="tog on" id="on-auto">'));
 }
 // network check
 {

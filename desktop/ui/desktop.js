@@ -454,9 +454,9 @@
 
   // ---------- online: host GBAdhoc's relay on this PC (online.js draws it) ----------
   const O = window.ONLINE;
-  const onView = { port: 27420, upnp: true, directory: true, showIp: false, logOpen: false, busy: false, checking: false };
-  function onPrefs() { const o = prefs.online || {}; if (o.port) onView.port = o.port; if (o.upnp === false) onView.upnp = false; if (o.directory === false) onView.directory = false; }
-  function saveOnPrefs() { prefs.online = { port: onView.port, upnp: onView.upnp, directory: onView.directory }; X.savePrefs(); }
+  const onView = { port: 27420, upnp: true, directory: true, autoHost: false, showIp: false, logOpen: false, busy: false, checking: false };
+  function onPrefs() { const o = prefs.online || {}; if (o.port) onView.port = o.port; if (o.upnp === false) onView.upnp = false; if (o.directory === false) onView.directory = false; onView.autoHost = o.autoHost === true; }
+  function saveOnPrefs() { prefs.online = { port: onView.port, upnp: onView.upnp, directory: onView.directory, autoHost: onView.autoHost }; X.savePrefs(); }
   function renderOnline(m) {
     m.innerHTML = O.html(onSt, onCheck, onView);
     m.querySelector('#on-host').addEventListener('click', () => (onSt && onSt.running ? stopHosting() : startHosting()));
@@ -465,6 +465,7 @@
     port.addEventListener('change', () => { const v = parseInt(port.value, 10); if (v >= 1024 && v <= 65534) { onView.port = v; saveOnPrefs(); } else port.value = onView.port; });
     m.querySelector('#on-upnp').addEventListener('click', () => { if (onSt && onSt.running) return; onView.upnp = !onView.upnp; saveOnPrefs(); render(); });
     m.querySelector('#on-dir').addEventListener('click', () => { if (onSt && onSt.running) return; onView.directory = !onView.directory; saveOnPrefs(); render(); });
+    m.querySelector('#on-auto').addEventListener('click', () => { onView.autoHost = !onView.autoHost; saveOnPrefs(); render(); });
     m.querySelector('#on-logbox').addEventListener('toggle', (e) => { onView.logOpen = e.target.open; });
   }
   // the live parts only, so the port field and the open log keep their state
@@ -519,7 +520,7 @@
   }
   $('main').addEventListener('click', (e) => {
     const c = e.target.closest('[data-copy]');
-    if (c) { navigator.clipboard.writeText(c.dataset.copy).then(() => toast('Copied ' + c.dataset.copy, 'ok'), () => toast('Could not copy', 'bad')); return; }
+    if (c) { navigator.clipboard.writeText(c.dataset.copy).then(() => toast('Copied ' + (c.dataset.copylabel || c.dataset.copy) + (c.dataset.copylabel ? ': paste it in your chat' : ''), 'ok'), () => toast('Could not copy', 'bad')); return; }
     if (e.target.closest('[data-copypub]')) { const v = O.publicAddr(onSt); if (v) navigator.clipboard.writeText(v).then(() => toast('Copied the public address', 'ok'), () => toast('Could not copy', 'bad')); return; }
     if (e.target.closest('[data-showpub]')) { onView.showIp = !onView.showIp; paintOnline(); return; }
     const hp = e.target.closest('[data-hostport]'); if (hp) { startHosting(parseInt(hp.dataset.hostport, 10)); return; }
@@ -598,7 +599,7 @@
     if (!Array.isArray(prefs.folders)) prefs.folders = [];
     if (st.queue && st.queue.ids && st.queue.ids.length) { queueState = st.queue; queueState.paused = true; }
     $('ver').textContent = 'GBAdhoc XMB ' + hello.version;
-    onPrefs(); onlineLoop(); pollOnline();
+    onPrefs(); onlineLoop(); pollOnline().then(() => { if (onView.autoHost && !(onSt && onSt.running)) startHosting(); });
     setPalette(prefs.palette);
     setTheme(prefs.theme || (hello.dark ? 'dark' : 'light'));
     X.netStatus().then(n => { netInfo = n; render(); });

@@ -41,6 +41,27 @@ Join with code.
 - **Vendored invite decoder** is GBAdhoc's 32-bit one; `test_invite` checks it against the first
   decoder on 4 M inputs.
 
+**Hosting, made simpler (Windows).**
+
+- **One plain status.** When the room is reachable, the banner says *Ready: friends can join with
+  code ABCD* (or the invite code, if the directory is down).
+- **Copy message.** A big button copies a sentence to paste in a chat: the code, where to type it
+  on the PSP, the backup invite code, and "the same GBAdhoc build, with gba_bios.bin". It never
+  includes the public address.
+- **When the router blocks hosting, the tab names the fix:** turn on UPnP (or Port forwarding in
+  a provider's phone app), or forward the ports to this PC's address, then Stop and Host again.
+  Otherwise, let the friend host, because joining needs nothing from a router.
+- **If a friend can't join:** a new section covering the same build and BIOS, phone hotspots
+  that share Wi-Fi, the same-house code, and a PSP host needing UDP 27500.
+- **Host when GBAdhoc XMB starts** (Settings on the Online tab, off by default), remembered with
+  the other online settings.
+- Tests: the Online tab's new states (`online_ui.js`, 125 checks). `test_online directory` runs
+  the loopback directory alone, for the README screenshots.
+
+**README:** shown in Slate, with a neutral outlined "XMB" mark and neutral badges. Every image
+is recaptured: the PSP app in PPSSPP, the Windows app with its own capture, and the hero with
+the real PSP model. A *Play online* section adds steps and troubleshooting.
+
 **Windows app fixes (owner review of 0.2.0-beta.1).**
 
 - **A busy port is handled.** When Host finds UDP 27420-27421 taken on this PC, the app sends a
