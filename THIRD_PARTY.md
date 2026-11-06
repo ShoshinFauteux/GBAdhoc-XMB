@@ -73,4 +73,4 @@ ROMs and drawn placeholder art.
 
 | Component | Licence | Used for |
 |---|---|---|
-| **"Sony PSP" 3D model** by [Ilya Ostrovsky](https://sketchfab.com/strov) ([source](https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761)) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | the README hero image (`docs/img/hero.png`), rendered with the app's screen on it. The model itself is not in this repository. |
+| **"Sony PSP" 3D model** by [Ilya Ostrovsky](https://sketchfab.com/strov) ([source](https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761)) | [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) | the README hero image (`docs/img/hero.png`) and the Windows app's "Connect your PSP" picture (`desktop/ui/assets/psp@2x.png`), both rendered with the app's screen on it. The model itself is not in this repository. |

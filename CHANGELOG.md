@@ -41,6 +41,22 @@ Join with code.
 - **Vendored invite decoder** is GBAdhoc's 32-bit one; `test_invite` checks it against the first
   decoder on 4 M inputs.
 
+**Windows app fixes (owner review of 0.2.0-beta.1).**
+
+- **A busy port is handled.** When Host finds UDP 27420-27421 taken on this PC, the app sends a
+  GBR1 PROBE there. If a GBAdhoc relay answers (the standalone `gbadhoc-relay`, say), the tab
+  offers *Use it*: that relay's LAN invite, and its internet invite when the router forwards the
+  port. It also offers *Host on the next free port*, and the invite code then carries the port.
+  Another program on the port: the app hosts on the next free pair by itself. It never binds over
+  the program holding the port, or stops it.
+- **Any window size.** A maximised window fills: the UI zooms up to 1.3x on big windows (less
+  under Windows' 125/150 % scaling), the library grid takes more columns, Settings, Art sources
+  and Online centre a 1040 px column, and the empty states centre in the content area.
+- **"Connect your PSP"** shows a render of the real PSP with GBAdhoc XMB on its screen (the README
+  hero's model, "Sony PSP" by Ilya Ostrovsky, CC BY 4.0, credited in Settings › About) instead
+  of the drawn one.
+- Test flags for screenshots: `--size WxH`, `--max`, `--scale 1.25`.
+
 ## 0.2.0-beta.1
 
 **Host online room (Windows, experimental).** The Windows app becomes a 2-in-1: besides making

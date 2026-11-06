@@ -1130,3 +1130,159 @@ void online_check_json(const online_cfg *cfg, sb *b)
    sb_kv_str(b, "verdict", verdict(r == 0 && wan[0] ? "mapped" : "none", wan, prs, pub[0][0] ? pub[0] : pub[1]));
    sb_add(b, "}");
 }
+
+/* ---- a busy port: is it a GBAdhoc relay? -------------------------------------------
+ * When online_start says "busy", the Online tab asks this: send GBR1 PROBEs to the port
+ * (and port + 1) on every address of this PC; a relay that answers PROBED is GBAdhoc's
+ * (the standalone gbadhoc-relay, another copy of this app).  Nothing is bound on the port
+ * and nothing is sent to the program that holds it but the two 27-byte PROBEs, which a
+ * GBAdhoc relay answers with the same size (no amplification).  Also finds the next free
+ * port pair, and for a relay found, the codes a friend types to reach it: the LAN invite,
+ * and the internet invite when the router forwards the port to this PC (UPnP lookup). */
+
+static int local_addrs(uint32_t *out, int cap)
+{
+   char host[256];
+   struct addrinfo hints, *res = NULL, *r;
+   int n = 0, k;
+   out[n++] = inet_addr("127.0.0.1");
+   memset(&hints, 0, sizeof(hints));
+   hints.ai_family = AF_INET;
+   if (gethostname(host, sizeof(host)) == 0 && getaddrinfo(host, NULL, &hints, &res) == 0)
+   {
+      for (r = res; r && n < cap; r = r->ai_next)
+      {
+         uint32_t ip = ((struct sockaddr_in *)r->ai_addr)->sin_addr.s_addr;
+         int c = upnp_ip_class(inet_ntoa(((struct sockaddr_in *)r->ai_addr)->sin_addr));
+         if (c == IPC_INVALID || c == IPC_LOOPBACK)
+            continue;
+         for (k = 0; k < n && out[k] != ip; k++)
+            ;
+         if (k == n)
+            out[n++] = ip;
+      }
+      freeaddrinfo(res);
+   }
+   return n;
+}
+
+/* the first port >= from (even steps) with port and port + 1 free on bind; 0 = none */
+static unsigned free_pair(const char *bind, unsigned from)
+{
+   unsigned p;
+   for (p = from; p <= 65534 && p < from + 64; p += 2)
+   {
+      SOCKET a = udp_bind(bind, p), b = a == INVALID_SOCKET ? INVALID_SOCKET : udp_bind(bind, p + 1);
+      if (a != INVALID_SOCKET)
+         closesocket(a);
+      if (b != INVALID_SOCKET)
+      {
+         closesocket(b);
+         return p;
+      }
+   }
+   return 0;
+}
+
+void online_conflict_json(const online_cfg *cfg, sb *b)
+{
+   unsigned port = cfg && cfg->port ? cfg->port : RL_DEFAULT_PORT;
+   const char *bind = cfg && cfg->bind[0] ? cfg->bind
+                    : getenv("XMB_ONLINE_BIND") && getenv("XMB_ONLINE_BIND")[0] ? getenv("XMB_ONLINE_BIND") : "0.0.0.0";
+   uint32_t addrs[16], at = 0;
+   int n, i, answered[2] = { 0, 0 };
+   unsigned freep;
+   char where[24] = "", inv[16] = "", inv_lan[16] = "", wan[16] = "", fwd_to[16] = "", up_state[16] = "none";
+   SOCKET s;
+   online_init();
+   n = local_addrs(addrs, 16);
+   s = udp_bind(!strcmp(bind, "0.0.0.0") ? "0.0.0.0" : bind, 0);
+   if (s != INVALID_SOCKET)
+   {
+      uint32_t nonce = (uint32_t)rnd64(NULL) | 1u;
+      uint64_t t0 = now_ms();
+      for (i = 0; i < n; i++)
+      {
+         rl_addr to;
+         to.ip_be = addrs[i];
+         to.port = (uint16_t)port;
+         send_probe(s, &to, 0, nonce);
+         send_probe(s, &to, 1, nonce);
+      }
+      while (now_ms() - t0 < 900 && !(answered[0] && answered[1]))
+      {
+         uint8_t buf[600];
+         struct sockaddr_in from;
+         int fl = sizeof(from), r;
+         fd_set f;
+         struct timeval tv = { 0, 50000 };
+         FD_ZERO(&f);
+         FD_SET(s, &f);
+         if (select(0, &f, NULL, NULL, &tv) <= 0)
+            continue;
+         r = recvfrom(s, (char *)buf, sizeof(buf), 0, (struct sockaddr *)&from, &fl);
+         if (r >= RL_HDR + 11 && rl_check(buf, r) == 0 && buf[5] == RL_T_PROBED &&
+             rl_get32(buf + RL_HDR) == nonce && buf[RL_HDR + 10] < 2)
+         {
+            answered[buf[RL_HDR + 10]] = 1;
+            /* prefer a LAN address over loopback: that is what a PSP would use */
+            if (!at || ((const uint8_t *)&at)[0] == 127)
+               at = from.sin_addr.s_addr;
+         }
+      }
+      closesocket(s);
+   }
+   freep = free_pair(bind, port + 2);
+   sb_add(b, "{");
+   sb_kv_num(b, "port", port);
+   sb_kv_num(b, "freePort", freep);
+   sb_kv_bool(b, "relay", answered[0] || answered[1]);
+   sb_kv_bool(b, "probePort", answered[1]);
+   if (answered[0] || answered[1])
+   {
+      uint32_t lan = at && ((const uint8_t *)&at)[0] != 127 ? at : first_lan_ip(bind);
+      upnp_opts o;
+      upnp_igd igd;
+      char err[240];
+      struct in_addr ia;
+      ia.s_addr = at;
+      snprintf(where, sizeof(where), "%s", inet_ntoa(ia));
+      if (lan && inv_encode((const uint8_t *)&lan, port, 1, inv_lan) != INV_OK)
+         inv_lan[0] = '\0';
+      /* the internet: only when the router forwards the port to this PC */
+      memset(&o, 0, sizeof(o));
+      snprintf(o.ssdp, sizeof(o.ssdp), "%s", cfg && cfg->ssdp[0] ? cfg->ssdp : getenv("XMB_UPNP_SSDP") ? getenv("XMB_UPNP_SSDP") : "");
+      if (upnp_discover(&o, &igd, err, sizeof(err)) == 0)
+      {
+         unsigned short in = 0;
+         snprintf(up_state, sizeof(up_state), "found");
+         if (upnp_external_ip(&igd, wan, err, sizeof(err)) != 0)
+            wan[0] = '\0';
+         if (upnp_get_mapping(&igd, (unsigned short)port, "UDP", fwd_to, &in, err, sizeof(err)) == 0)
+         {
+            if (!strcmp(fwd_to, igd.local_ip) && in == port)
+               snprintf(up_state, sizeof(up_state), "mapped");
+            else
+               snprintf(up_state, sizeof(up_state), "other");
+         }
+         /* the public address: verified when the router maps the port here by UPnP; else it
+          * still works if the port was forwarded by hand (the tab says which) */
+         if (strcmp(up_state, "other") && upnp_ip_class(wan) == IPC_PUBLIC)
+         {
+            uint32_t ip = inet_addr(wan);
+            if (inv_encode((const uint8_t *)&ip, port, 1, inv) != INV_OK)
+               inv[0] = '\0';
+         }
+      }
+   }
+   sb_kv_str(b, "addr", where);
+   sb_kv_str(b, "invite", inv);
+   sb_kv_str(b, "inviteLan", inv_lan);
+   sb_key(b, "upnp");
+   sb_add(b, "{");
+   sb_kv_str(b, "state", up_state);          /* none, found (no mapping), mapped (to this PC), other */
+   sb_kv_str(b, "to", fwd_to);
+   sb_kv_str(b, "wanClass", wan[0] ? upnp_ip_class_name(upnp_ip_class(wan)) : "");
+   sb_add(b, "}");
+   sb_add(b, "}");
+}

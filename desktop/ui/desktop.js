@@ -12,6 +12,21 @@
   let onSt = null, onCheck = null, onTimer = null; // the Online tab (below)
   let hello = null, netInfo = null, cacheInfo = null, cardDirs = [], queueState = null, lastDevice = null;
 
+  // ---------- window size: a big (maximised) window zooms the UI a little, then reflows ----------
+  // 1.0 up to 1480x920 CSS px, then with the smaller of the two ratios, in 5 % steps, at most
+  // 1.3 (a 2560x1440 monitor at 100 %). Windows' own scaling (125 %, 150 %) is already in the
+  // CSS px, so a scaled monitor zooms less. The window's size is set in zoomed px so it fills.
+  function fitWindow() {
+    const w = window.innerWidth, h = window.innerHeight;
+    const z = Math.min(1.3, Math.max(1, Math.floor(Math.min(w / 1480, h / 920) * 20) / 20));
+    win.style.zoom = z === 1 ? '' : String(z);
+    win.style.width = z === 1 ? '' : (w / z) + 'px';
+    win.style.height = z === 1 ? '' : (h / z) + 'px';
+    win.dataset.zoom = String(z);
+  }
+  fitWindow();
+  window.addEventListener('resize', fitWindow);
+
   // ---------- banners ----------
   function banners() {
     const b = [];
@@ -77,6 +92,7 @@
     banners(); renderRail(); statusbar();
     document.body.classList.toggle('light', win.dataset.theme === 'light');
     const m = $('main');
+    m.classList.toggle('paged', ui.view === 'online' || (!ui.scanning && (ui.view === 'settings' || ui.view === 'art')));
     if (ui.view === 'online') return renderOnline(m);
     if (ui.scanning) { m.innerHTML = `<div class="scanning"><div class="arc"><i></i><i></i><i></i><i></i><i></i></div><div>${esc(ui.scanMsg || 'Scanning the Memory Stick…')}</div><div class="f">${esc(ui.scanFile || '')}</div><div class="pb"><b style="width:${ui.scanP}%"></b></div></div>`; return; }
     if (ui.view === 'settings') return renderSettings(m);
@@ -106,7 +122,7 @@
     return `<div class="empty"><h3>Nothing here</h3>No games match this filter.</div>`;
   }
   function renderWaiting(m) {
-    m.innerHTML = `<div class="waiting"><div class="psp"></div><h2>Connect your PSP</h2><p>GBAdhoc XMB finds the PSP by itself, whichever drive letter Windows gives it, on a PSP-1000, 2000, 3000 or a PSP Go.</p>
+    m.innerHTML = `<div class="waiting"><img class="psp" src="assets/psp@2x.png" width="380" height="228" alt="A PSP showing GBAdhoc XMB's library"><h2>Connect your PSP</h2><p>GBAdhoc XMB finds the PSP by itself, whichever drive letter Windows gives it, on a PSP-1000, 2000, 3000 or a PSP Go.</p>
       <ol><li><b>1</b>Connect the PSP to this PC with a USB cable.</li><li><b>2</b>On the PSP, open Settings › USB connection.</li><li><b>3</b>Your games appear here.</li></ol></div>`;
   }
   function cardHTML(g) {
@@ -393,7 +409,7 @@
         <div class="srow"><div class="t"><b>GBAdhoc</b><small>${connected() ? esc(X.where()) + '/' + esc(X.storage.gbadhoc) + (X.storage.installTitle ? ' · ' + esc(X.storage.installTitle) : '') : 'No PSP connected'}</small></div><span class="pill ${connected() && !X.scenario.noInstall ? 'ok' : 'bad'}">${connected() ? (X.scenario.noInstall ? 'Not found' : 'Found') : 'No PSP'}</span></div>
         <div class="srow"><div class="t"><b>Launcher</b><small class="p">Every entry gets the same 130 KB launcher; updating GBAdhoc updates every entry</small></div><span class="pill">1.0 · built in</span></div>
         <div class="srow"><div class="t"><b>Written straight through to the stick</b><small class="p">Every file is flushed as it is written and checked after, and an entry only appears in PSP/GAME once it is whole, so pulling the cable never leaves half an entry</small></div><span class="pill ok">Always</span></div></div>
-      <div class="sec"><h3>About</h3><div class="srow"><div class="t"><b>GBAdhoc XMB ${esc(hello ? hello.version : '0.2.0-beta.1')}</b><small class="p">A sibling of GBAdhoc. Box art: libretro-thumbnails (Named_Boxarts). Hero art: GBAdhoc-heroart. No-Intro names: libretro-database. WebView2 ${esc(hello ? hello.runtime : '')}.</small></div></div></div></div>`;
+      <div class="sec"><h3>About</h3><div class="srow"><div class="t"><b>GBAdhoc XMB ${esc(hello ? hello.version : '0.2.0-beta.1')}</b><small class="p">A sibling of GBAdhoc. Box art: libretro-thumbnails (Named_Boxarts). Hero art: GBAdhoc-heroart. No-Intro names: libretro-database. The PSP picture: a render of the "Sony PSP" 3D model by Ilya Ostrovsky (sketchfab.com/strov), CC BY 4.0. WebView2 ${esc(hello ? hello.runtime : '')}.</small></div></div></div></div>`;
     m.querySelectorAll('#palette button').forEach(b => b.addEventListener('click', () => { setPalette(b.dataset.p); prefs.palette = b.dataset.p; X.savePrefs(); render(); }));
     m.querySelectorAll('.tog[data-p]').forEach(t => t.addEventListener('click', () => { prefs[t.dataset.p] = !prefs[t.dataset.p]; X.savePrefs(); render(); }));
     m.querySelector('#region').addEventListener('change', e => { prefs.region = e.target.value; X.savePrefs(); });
@@ -447,10 +463,30 @@
     statusbar();
   }
   function onlineLoop() { clearInterval(onTimer); onTimer = setInterval(() => { if (ui.view === 'online' || (onSt && onSt.running)) pollOnline(); }, 1000); }
-  async function startHosting() {
-    onView.busy = true; render();
-    try { onSt = await H.call('onlineStart', { port: onView.port, upnp: onView.upnp, directory: onView.directory }); toast(`Hosting on UDP ${onSt.port}-${onSt.port + 1}`, 'ok'); } catch (e) { toast(e.message, 'bad'); }
+  // port: this once (a busy port's way out); the saved port stays as it is
+  async function startHosting(port) {
+    const p = port || onView.port;
+    onView.busy = true; onView.useExternal = false; if (port) onView.conflict = null; render();
+    try {
+      onSt = await H.call('onlineStart', { port: p, upnp: onView.upnp, directory: onView.directory });
+      onView.conflict = null;
+      toast(`Hosting on UDP ${onSt.port}-${onSt.port + 1}`, 'ok');
+    } catch (e) {
+      if (e.code === 'busy' && !port) { onView.busy = false; return busyPort(p); }
+      toast(e.message, 'bad');
+    }
     onView.busy = false; render();
+  }
+  // The port is taken on this PC. Never bind over it: ask whether a GBAdhoc relay answers there
+  // (the standalone gbadhoc-relay); if so offer to use it, else host on the next free port.
+  async function busyPort(p) {
+    onView.conflict = { checking: true, port: p }; render();
+    let c = null;
+    try { c = await H.call('onlineConflict', { port: p }); } catch (e) { c = null; }
+    if (c && c.relay) { onView.conflict = c; render(); return; }
+    onView.conflict = null;
+    if (c && c.freePort) { toast(`UDP ${p}-${p + 1} is used by another program; hosting on ${c.freePort}-${c.freePort + 1} instead`, 'warn'); return startHosting(c.freePort); }
+    toast(`UDP ${p} or ${p + 1} is in use by another program, and no free port was found nearby. Pick another port in Settings.`, 'bad'); render();
   }
   async function stopHosting() {
     onView.busy = true; render();
@@ -467,6 +503,10 @@
     if (c) { navigator.clipboard.writeText(c.dataset.copy).then(() => toast('Copied ' + c.dataset.copy, 'ok'), () => toast('Could not copy', 'bad')); return; }
     if (e.target.closest('[data-copypub]')) { const v = O.publicAddr(onSt); if (v) navigator.clipboard.writeText(v).then(() => toast('Copied the public address', 'ok'), () => toast('Could not copy', 'bad')); return; }
     if (e.target.closest('[data-showpub]')) { onView.showIp = !onView.showIp; paintOnline(); return; }
+    const hp = e.target.closest('[data-hostport]'); if (hp) { startHosting(parseInt(hp.dataset.hostport, 10)); return; }
+    if (e.target.closest('[data-useext]')) { onView.useExternal = true; render(); return; }
+    if (e.target.closest('[data-unuse]')) { onView.useExternal = false; render(); return; }
+    if (e.target.closest('[data-unconflict]')) { onView.conflict = null; onView.useExternal = false; render(); return; }
     const sh = e.target.closest('[data-show]');
     if (sh) { const row = sh.closest('.srow'); row.querySelectorAll('.secret').forEach(x => { x.textContent = x.textContent === 'hidden' ? x.dataset.secret : 'hidden'; }); sh.textContent = sh.textContent === 'Show' ? 'Hide' : 'Show'; }
   });

@@ -48,6 +48,12 @@ void online_status_json(sb *out);
  * this PC.  Blocks a few seconds. */
 void online_check_json(const online_cfg *cfg, sb *out);
 
+/* online_start said "busy": is the port held by a GBAdhoc relay on this PC (it answers a
+ * GBR1 PROBE)?  {port, freePort (the next free pair, 0 = none), relay, addr, invite,
+ * inviteLan, upnp:{state, to, wanClass}}.  Never binds the busy port.  Blocks a few
+ * seconds when a relay answers (the router is asked whether it forwards the port). */
+void online_conflict_json(const online_cfg *cfg, sb *out);
+
 /* tests: how many objects the host owns right now (0 after a stop) */
 long online_live_objects(void);
 

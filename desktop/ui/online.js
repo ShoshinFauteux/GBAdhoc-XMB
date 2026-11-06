@@ -109,6 +109,7 @@
   }
 
   function statusHTML(st, view) {
+    view = view || {};
     const d = describe(st);
     const up = (st && st.upnp) || {}, rel = (st && st.relay) || {};
     const lan = (st && st.lan) || [];
@@ -122,10 +123,41 @@
         ${pub ? `<div class="srow"><div class="t"><b>Public address</b><small>${view.showIp ? esc(relayAddr(pub, st)) : 'hidden · the guest sees this address'}</small></div><button class="b sm" data-showpub>${view.showIp ? 'Hide' : 'Show'}</button><button class="b sm" data-copypub>Copy</button></div>` : ''}`;
     }
     const steps = '';   // the PSPs now join by code: the "Tell your friend" card (codesHTML)
-    return `<div class="note ${d.tone || 'info'} onote"><b>${esc(d.title)}</b><div>${esc(d.text)}${d.shared ? ' ' + esc(sharedTip()) : ''}</div></div>
+    const busy = !(st && st.running) && view.conflict ? conflictHTML(view.conflict, view) : '';
+    if (busy && view.useExternal) return busy;
+    return `${busy || `<div class="note ${d.tone || 'info'} onote"><b>${esc(d.title)}</b><div>${esc(d.text)}${d.shared ? ' ' + esc(sharedTip()) : ''}</div></div>`}
       ${st && st.running ? codesHTML(st, view) : ''}
       <div class="sec"><h3>This PC</h3>${rows || `<div class="srow"><div class="t"><b>Ports</b><small>${esc(ports(st))} (UDP), opened on the router with UPnP while you host and closed when you stop</small></div><span class="pill">Off</span></div>`}${steps}</div>
       <div class="sec"><h3>Rooms</h3>${st && st.running ? roomsHTML(st) : `<div class="srow"><div class="t"><b>Not hosting</b><small class="p">Rooms appear here while this PC hosts.</small></div></div>`}</div>`;
+  }
+
+  // The port was busy when Host was pressed (desktop.js asked onlineConflict):
+  //   checking: probing it;  relay: a GBAdhoc relay answers there (the standalone gbadhoc-relay,
+  //   or another copy of this app): use it, or host on the next free port;  else another program
+  //   holds it (desktop.js has already moved to the free port).  view.useExternal: "Use it" chosen.
+  function conflictHTML(c, view) {
+    if (!c) return '';
+    if (c.checking) return `<div class="note info onote" id="on-conflict"><b>UDP ${c.port}-${c.port + 1} is in use on this PC</b><div>Checking whether it is a GBAdhoc relay…</div></div>`;
+    if (!c.relay) return '';
+    const p = c.port, fp = c.freePort;
+    const where = c.addr && !/^127\./.test(c.addr) ? `${esc(c.addr)}:${p}` : `UDP ${p}`;
+    const up = c.upnp || {};
+    const reach = up.state === 'mapped' ? 'Your router forwards the port to this PC (UPnP), so players on the internet can reach it too.'
+      : up.state === 'other' ? `Your router forwards UDP ${p} to another device (${esc(up.to)}), so only PSPs on this network can reach this relay.`
+      : `Your router has no UPnP mapping of UDP ${p}: the internet invite works if you forwarded UDP ${p}-${p + 1} to this PC by hand.`;
+    if (view && view.useExternal) {
+      const inv = c.invite || '', lan = c.inviteLan || '';
+      return `<div class="note ok onote" id="on-conflict"><b>Using the GBAdhoc relay already running on this PC</b><div>It listens on ${where}. GBAdhoc XMB does not start, stop or watch it: its rooms and players are in that relay's own log. ${reach}</div></div>
+        <div class="sec codes"><h3>Tell your friend</h3><div class="coderow">
+          <div class="codebox"><div class="lbl">Invite code <span class="hint">no server</span></div><div class="big inv">${inv ? esc(inv) : '—'}</div>
+            <div class="sub">${inv ? `This PC's public address and port ${p}, plus a check character.${up.state === 'mapped' ? '' : ` Needs UDP ${p}-${p + 1} forwarded to this PC.`}` : 'No internet invite: no public address was found, or the router forwards this port to another device.'}</div>
+            <div class="acts">${inv ? `<button class="b sm primary" data-copy="${esc(inv)}">Copy</button>` : ''}</div>
+            ${lan ? `<div class="sub lan">For a PSP on this network: <span class="mono">${esc(lan)}</span> <button class="b sm" data-copy="${esc(lan)}">Copy</button></div>` : ''}</div>
+          <div class="codebox off"><div class="lbl">Room code</div><div class="big">—</div><div class="sub">That relay keeps its own rooms: the first PSP in with the invite code creates one and the second joins it.</div></div></div>
+          <div class="srow"><div class="t"><b>Or host here instead</b><small class="p">${fp ? `GBAdhoc XMB can host its own room on UDP ${fp}-${fp + 1} (the invite code then carries the port). The relay on ${p} keeps running.` : 'No free port pair nearby.'}</small></div>${fp ? `<button class="b sm" data-hostport="${fp}">Host on ${fp}</button>` : ''}<button class="b sm" data-unuse>Back</button></div></div>`;
+    }
+    return `<div class="note info onote" id="on-conflict"><b>A GBAdhoc relay is already running on this PC</b><div>It answers on ${where}, so GBAdhoc XMB leaves it alone. Use it (PSPs join it with an invite code), or host this app's own room on the next free port.</div>
+      <div class="oacts"><button class="b sm primary" data-useext>Use it</button>${fp ? `<button class="b sm" data-hostport="${fp}">Host on UDP ${fp}-${fp + 1} instead</button>` : ''}<button class="b sm" data-unconflict>Dismiss</button></div></div>`;
   }
 
   function logHTML(st) {
@@ -161,5 +193,5 @@
   // the address the Copy button of the public row copies (kept out of the page until asked)
   function publicAddr(st) { const up = (st && st.upnp) || {}, rel = (st && st.relay) || {}; const pub = rel.state === 'ok' && rel.pub ? rel.pub : up.wan; return pub ? relayAddr(pub, st) : ''; }
 
-  root.ONLINE = { describe, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, codesHTML, NO_FILES, SHARED };
+  root.ONLINE = { describe, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, codesHTML, conflictHTML, NO_FILES, SHARED };
 })(typeof window !== 'undefined' ? window : globalThis);

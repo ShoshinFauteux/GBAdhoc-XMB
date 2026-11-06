@@ -309,8 +309,41 @@ static int t_lifecycle(int n, unsigned port, const char *sport)
       cfg_for(&c, port, NULL, NULL);
       CHECK(online_start(&c, code, sizeof(code), err, sizeof(err)) != 0 && !strcmp(code, "busy"),
             "port %u taken: refused as %s", port + 1, code);
+      /* the busy port is not a GBAdhoc relay (a bare socket): no relay, the next free pair */
+      {
+         sb o;
+         jv *r;
+         sb_init(&o);
+         online_conflict_json(&c, &o);
+         r = jv_parse(o.s);
+         CHECK(r && !jv_bool(r, "relay", 1) && (unsigned)jv_num(r, "freePort", 0) == port + 2,
+               "busy port, not a relay: %s", o.s);
+         jv_free(r);
+         sb_free(&o);
+      }
       closesocket(s);
       CHECK(online_live_objects() == 0 && g_ca_live == a0 && port_free(port), "nothing left by the refusal");
+   }
+   /* the busy port IS a GBAdhoc relay (this host, running): it answers the PROBE; the router
+    * lookup goes to a dead loopback port, so nothing leaves the machine */
+   {
+      sb o;
+      jv *r;
+      online_cfg q;
+      cfg_for(&c, port, NULL, NULL);
+      CHECK(online_start(&c, code, sizeof(code), err, sizeof(err)) == 0, "host for the probe: %s", err);
+      cfg_for(&q, port, "127.0.0.1:9", NULL);
+      sb_init(&o);
+      online_conflict_json(&q, &o);
+      r = jv_parse(o.s);
+      CHECK(r && jv_bool(r, "relay", 0) && jv_bool(r, "probePort", 0) && (unsigned)jv_num(r, "freePort", 0) == port + 2,
+            "busy port, a GBAdhoc relay: %s", o.s);
+      CHECK(r && jv_str(r, "inviteLan", "")[0], "a LAN invite for it: %s", o.s);
+      jv_free(r);
+      sb_free(&o);
+      online_stop();
+      Sleep(50);
+      CHECK(online_live_objects() == 0 && port_free(port) && port_free(port + 1), "probed relay stopped cleanly");
    }
    cfg_for(&c, 80, NULL, NULL);
    CHECK(online_start(&c, code, sizeof(code), err, sizeof(err)) != 0 && !strcmp(code, "bad"), "port 80 refused");

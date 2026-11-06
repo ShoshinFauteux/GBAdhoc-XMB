@@ -53,6 +53,11 @@ static ICoreWebView2Controller *g_ctrl;
 static ICoreWebView2 *g_wv;
 static char g_ui_dir[1024], g_open[1024], g_script[1024], g_shot[1024], g_result[1024];
 static int g_dev, g_wait = 3000, g_ready;
+/* screenshots and tests: the window's client size in 96-DPI px, maximised, and a
+ * forced WebView2 rasterization scale (1.25 = 125 %), so DPI layouts can be checked
+ * on any monitor */
+static int g_size_w, g_size_h, g_max;
+static double g_scale;
 static volatile LONG g_writing;
 static sb g_last_devices;
 static wchar_t g_runtime[64];
@@ -235,6 +240,13 @@ static DWORD WINAPI job_thread(LPVOID p)
       memset(&oc, 0, sizeof(oc));
       oc.port = (unsigned)jv_num(j->args, "port", 0);
       online_check_json(&oc, &out);
+   }
+   else if (!strcmp(j->cmd, "onlineConflict"))
+   {
+      online_cfg oc;
+      memset(&oc, 0, sizeof(oc));
+      oc.port = (unsigned)jv_num(j->args, "port", 0);
+      online_conflict_json(&oc, &out);
    }
    else if (!strcmp(j->cmd, "netStatus"))
       art_net_status(&out);
@@ -737,6 +749,16 @@ static HRESULT STDMETHODCALLTYPE on_controller(ICoreWebView2CreateCoreWebView2Co
       ICoreWebView2Settings_put_IsZoomControlEnabled(set, FALSE);
       ICoreWebView2Settings_Release(set);
    }
+   if (g_scale > 0.5)
+   {
+      ICoreWebView2Controller3 *c3 = NULL;
+      if (SUCCEEDED(ICoreWebView2Controller_QueryInterface(c, &IID_ICoreWebView2Controller3, (void **)&c3)) && c3)
+      {
+         ICoreWebView2Controller3_put_ShouldDetectMonitorScaleChanges(c3, FALSE);
+         ICoreWebView2Controller3_put_RasterizationScale(c3, g_scale);
+         ICoreWebView2Controller3_Release(c3);
+      }
+   }
    GetClientRect(g_hwnd, &rc);
    ICoreWebView2Controller_put_Bounds(c, rc);
    ICoreWebView2_AddWebResourceRequestedFilter(g_wv, L"https://xmb.gbadhoc/*", COREWEBVIEW2_WEB_RESOURCE_CONTEXT_ALL);
@@ -933,6 +955,9 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE prev, PWSTR cmdline, int show)
       else if (!wcscmp(argv[i], L"--result") && i + 1 < argc) { snprintf(g_result, sizeof(g_result), "%s", v); i++; }
       else if (!wcscmp(argv[i], L"--wait") && i + 1 < argc) { g_wait = atoi(v); i++; }
       else if (!wcscmp(argv[i], L"--dev")) g_dev = 1;
+      else if (!wcscmp(argv[i], L"--size") && i + 1 < argc) { sscanf(v, "%dx%d", &g_size_w, &g_size_h); i++; }
+      else if (!wcscmp(argv[i], L"--max")) g_max = 1;
+      else if (!wcscmp(argv[i], L"--scale") && i + 1 < argc) { g_scale = atof(v); i++; }
    }
    LocalFree(argv);
 
@@ -979,20 +1004,24 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE prev, PWSTR cmdline, int show)
    RegisterClassExW(&wc);
 
    dpi = GetDpiForSystem();
-   w = MulDiv(1280, dpi, 96) + GetSystemMetricsForDpi(SM_CXFRAME, dpi) * 2;
-   h = MulDiv(800, dpi, 96) + GetSystemMetricsForDpi(SM_CYCAPTION, dpi) + GetSystemMetricsForDpi(SM_CYFRAME, dpi) * 2;
+   {
+      RECT r = { 0, 0, MulDiv(g_size_w > 0 ? g_size_w : 1280, dpi, 96), MulDiv(g_size_h > 0 ? g_size_h : 800, dpi, 96) };
+      AdjustWindowRectExForDpi(&r, WS_OVERLAPPEDWINDOW, FALSE, 0, dpi);
+      w = r.right - r.left;
+      h = r.bottom - r.top;
+   }
    {
       RECT wa;
       SystemParametersInfoW(SPI_GETWORKAREA, 0, &wa, 0);
-      if (w > wa.right - wa.left) w = wa.right - wa.left;
-      if (h > wa.bottom - wa.top) h = wa.bottom - wa.top;
+      if (w > wa.right - wa.left && !g_size_w) w = wa.right - wa.left;
+      if (h > wa.bottom - wa.top && !g_size_h) h = wa.bottom - wa.top;
       x = wa.left + (wa.right - wa.left - w) / 2;
       y = wa.top + (wa.bottom - wa.top - h) / 2;
    }
    g_hwnd = CreateWindowExW(0, L"GBAdhocXMB", L"GBAdhoc XMB", WS_OVERLAPPEDWINDOW, x, y, w, h,
                             NULL, NULL, hi, NULL);
    dark_titlebar(1);
-   ShowWindow(g_hwnd, g_shot[0] || g_result[0] ? SW_SHOWNOACTIVATE : show);
+   ShowWindow(g_hwnd, g_max ? SW_SHOWMAXIMIZED : g_shot[0] || g_result[0] ? SW_SHOWNOACTIVATE : show);
    UpdateWindow(g_hwnd);
    SetTimer(g_hwnd, T_POLL, 2500, NULL);
 

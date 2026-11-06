@@ -111,6 +111,21 @@ for (const [name, o, title, shared] of cases) {
   check('check: shared relay not found', h.includes('no DNS answer'));
   check('check: busy', O.checkHTML(null, true).includes('Checking'));
 }
+// a busy port (owner 2026-11-05: the standalone relay already owns 27420 on this PC)
+{
+  const rel = { port: 27420, freePort: 27422, relay: true, addr: '10.0.0.40', invite: 'ABCD-EFGH', inviteLan: '1800-0A0Y', upnp: { state: 'found', to: '', wanClass: 'public' } };
+  check('busy: checking', O.conflictHTML({ checking: true, port: 27420 }, {}).includes('Checking whether it is a GBAdhoc relay'));
+  const offer = O.statusHTML(S({ running: false }), { conflict: rel });
+  check('busy: relay found, offered', offer.includes('A GBAdhoc relay is already running on this PC') && offer.includes('10.0.0.40:27420') && offer.includes('data-useext'));
+  check('busy: next free port offered', offer.includes('data-hostport="27422"'));
+  check('busy: no "Not hosting" note under the offer', !offer.includes('onote"><b>Not hosting'));
+  const used = O.statusHTML(S({ running: false }), { conflict: rel, useExternal: true });
+  check('busy: use it shows the invites', used.includes('ABCD-EFGH') && used.includes('1800-0A0Y'));
+  check('busy: unverified internet invite says so', used.includes('forwarded to this PC'));
+  check('busy: mapped invite verified', !O.statusHTML(S({ running: false }), { conflict: { ...rel, upnp: { state: 'mapped' } }, useExternal: true }).includes('Needs UDP'));
+  check('busy: another program: no card', O.conflictHTML({ ...rel, relay: false }, {}) === '');
+  check('busy: hidden while hosting', !O.statusHTML(S({ running: true, verdict: 'open', upnp: { state: 'mapped' } }), { conflict: rel }).includes('already running on this PC'));
+}
 // the log
 {
   const h = O.logHTML(S({ log: [{ t: '12:00:01', tone: 'ok', text: 'Room KQTR opened by a PSP (LAN, 192.168.1.31)' }, { t: '12:00:09', tone: 'warn', text: 'Refused a PSP (internet, 198.51.x.x): different GBAdhoc build' }] }));

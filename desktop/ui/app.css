@@ -32,11 +32,10 @@ body.light{background:var(--dl-bg)}
 .waiting ol{margin:6px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;text-align:left;font-size:12.5px;color:var(--text-2)}
 .waiting ol li{display:flex;gap:10px;align-items:center}
 .waiting ol li b{width:20px;height:20px;border-radius:50%;background:var(--sel);color:var(--text);display:inline-flex;align-items:center;justify-content:center;font-size:11px;flex:0 0 auto}
-.waiting .psp{width:150px;height:62px;border-radius:31px;background:linear-gradient(180deg,var(--ink-3),var(--ink-1));box-shadow:inset 0 0 0 2px rgba(255,255,255,.12),0 12px 30px rgba(0,0,0,.4);position:relative}
-.waiting .psp::before{content:"";position:absolute;left:38px;right:38px;top:10px;bottom:10px;border-radius:4px;background:linear-gradient(135deg,var(--xmb-wave-a),var(--xmb-wave-b))}
-.waiting .psp::after{content:"";position:absolute;left:50%;bottom:-16px;width:2px;height:16px;background:var(--text-4);animation:usb 1.6s ease-in-out infinite}
-@keyframes usb{0%,100%{opacity:.25}50%{opacity:1}}
-@media (prefers-reduced-motion:reduce){.waiting .psp::after{animation:none}}
+/* a render of the real PSP (sony_psp.glb, CC BY 4.0: Settings > About), 760x456 for 2x screens */
+.waiting .psp{display:block;width:380px;max-width:72%;height:auto;margin:-20px 0 -24px;user-select:none;-webkit-user-drag:none;animation:pspin .5s cubic-bezier(.2,.7,.2,1) both}
+@keyframes pspin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.waiting .psp{animation:none}}
 
 /* Settings > Theme: one swatch per theme (its ground and its accent) */
 .tpick button{display:inline-flex;align-items:center;gap:6px;padding:4px 10px}
@@ -115,3 +114,19 @@ details#on-logbox[open] summary h3::after{content:" ▾"}
 .codebox .sub{font-size:11.5px;color:var(--text-3)}
 .codebox .sub.lan{margin-top:8px}
 .codebox .acts{margin-top:8px;display:flex;gap:6px}
+
+/* ---- any window size (owner 2026-11-05: maximised left the right side empty) ----
+   desktop.js fitWindow() zooms the whole window a little on big windows (1.0 at 1480x920
+   CSS px, at most 1.3), so text grows with the window; the layout below then reflows: the
+   library grid takes more columns, the pages centre a readable column, the empty states
+   centre in the content area, and the status bar always spans the window. */
+.main.paged .tools,.main.paged .page{box-sizing:border-box;max-width:none;width:100%;
+  padding-left:max(24px,calc((100% - 1040px) / 2));padding-right:max(24px,calc((100% - 1040px) / 2))}
+.main.paged .page{flex:1;min-height:0}
+.grid-wrap:has(>.empty){display:flex;align-items:center;justify-content:center}
+.empty{max-width:520px;margin:0 auto;line-height:1.5}
+.waiting p{max-width:520px}
+.statusbar{width:100%;box-sizing:border-box;min-width:0}
+.statusbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.note{max-width:100%;box-sizing:border-box}
+.oacts{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
