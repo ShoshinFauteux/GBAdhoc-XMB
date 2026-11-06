@@ -40,6 +40,7 @@ body.light{background:var(--dl-bg)}
 /* Settings > Theme: one swatch per theme (its ground and its accent) */
 .tpick button{display:inline-flex;align-items:center;gap:6px;padding:4px 10px}
 .tpick i{width:12px;height:12px;border-radius:3px;box-shadow:0 0 0 1px var(--bd-2)}
+.tpick [data-p=mono] i{background:linear-gradient(135deg,#18181a 50%,#d6d8dc 50%)}
 .tpick [data-p=graphite] i{background:linear-gradient(135deg,#232326 50%,#f5c518 50%)}
 .tpick [data-p=slate] i{background:linear-gradient(135deg,#20262f 50%,#5b94d6 50%)}
 .tpick [data-p=teal] i{background:linear-gradient(135deg,#20262f 50%,#1fb8b0 50%)}
@@ -136,3 +137,8 @@ details#on-logbox[open] summary h3::after{content:" ▾"}
 .statusbar span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .note{max-width:100%;box-sizing:border-box}
 .oacts{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+
+/* ---- Mono (the default): the XMB badge is an outline in the text colour, never a filled plate;
+   in the light window the silver accent turns black so buttons and bars keep their contrast ---- */
+:root[data-theme=mono] .rail .logo .xmb,:root[data-theme=mono] .brand .xmb{background:none;color:var(--text,var(--fg));box-shadow:inset 0 0 0 1.5px currentColor}
+:root[data-theme=mono] .win[data-theme=light]{--accent:#1b1b1d;--accent-ink:#f4f4f4;--accent-hover:#333336;--accent-soft:rgba(21,21,22,.07);--accent-glow:rgba(21,21,22,.18)}

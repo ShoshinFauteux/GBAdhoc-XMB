@@ -13,7 +13,7 @@ both apps share must agree with brand.css.  Exit 0 on success.
 import os, re, sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-THEMES = ["graphite", "slate", "teal", "classic"]
+THEMES = ["mono", "graphite", "slate", "teal", "classic"]
 fail = []
 
 

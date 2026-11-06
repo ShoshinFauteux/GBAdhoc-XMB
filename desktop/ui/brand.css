@@ -1,6 +1,7 @@
 /* GBAdhoc XMB — design tokens, shared by the desktop app (this file) and the PSP app
-   (psp/theme.c holds the same values as a C table). Four themes, chosen in Settings:
-     graphite  neutral graphite, white focus, the logo's amber accent (the default)
+   (psp/theme.c holds the same values as a C table). Five themes, chosen in Settings:
+     mono      true mono black: dark greys, off-white text, a soft silver accent (the default)
+     graphite  neutral graphite, white focus, the logo's amber accent
      slate     cool slate greys, a steel-blue accent
      teal      the same slate, the logo's teal accent; info moves to steel blue
      classic   the deep indigo and violet of 0.1.0-beta.1
@@ -22,9 +23,77 @@
   --mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
 }
 
-/* Graphite (the default). Neutral near-black, no blue cast. Focus is white on grey; the one
+/* Mono (the default, owner 2026-11-05). True mono: near-black ground, layered dark greys for
+   surfaces and cards, off-white and mid-grey text, one restrained light accent (soft silver).
+   No orange or yellow anywhere; warnings are a muted sand so they never read as an accent. The
+   XMB badge is an outline (app.css). Gradients stop short of pure black (the PSP LCD crushes it). */
+:root, :root[data-theme=mono] {
+  --ink-0: #0b0b0c;   /* deepest */
+  --ink-1: #111113;
+  --ink-2: #18181a;
+  --ink-3: #212124;
+  --ink-4: #2c2c30;
+  --line: rgba(255,255,255,.10);
+  --line-2: rgba(255,255,255,.20);
+  --fg: #eeeeec;
+  --fg-2: #c6c6c4;
+  --fg-3: #a2a2a0;
+  --fg-4: #8a8a8e;
+
+
+  /* accent: soft silver, light against the black */
+  --accent: #d6d8dc;
+  --accent-ink: #0b0b0c;
+  --accent-hover: #e8e9ec;
+  --accent-text: #e4e6ea;
+  --accent-soft: rgba(214,216,220,.12);
+  --accent-glow: rgba(214,216,220,.24);
+  --accent-edge: #f4f5f7;
+  --focus: #ffffff;                  /* white ring */
+  --focus-in: #0b0b0c;               /* dark gap inside it */
+  --sel: rgba(255,255,255,.11);      /* selected row / nav / chip: grey */
+  --cross: #8fc1ee;                  /* the PSP's cross glyph is blue */
+
+  /* status: the logo's lime and pink; warn is a muted sand, info a cool grey-blue */
+  --ok: var(--r-lime);   --ok-text: #b7ea5c;
+  --warn: #c8b68e; --warn-text: #ddcfab; --warn-text-2: #ece3cc; --warn-soft: rgba(200,182,142,.14); --warn-line: rgba(200,182,142,.5);
+  --bad: var(--r-pink);  --bad-text: #ff8aa8; --bad-text-2: #ffc4d3;
+  --info: #8ea4ba; --info-text: #b9cadb; --info-text-2: #dbe5ef; --info-soft: rgba(142,164,186,.14); --info-line: rgba(142,164,186,.45);
+
+  /* surfaces: layered greys, never pure black */
+  --page-bg: radial-gradient(120% 90% at 50% 110%,#1e1e20 0%,#0e0e0f 55%,#09090a 100%);
+  --bar-bg: rgba(13,13,14,.6);
+  --bar-bg-2: rgba(13,13,14,.8);
+  --toast-bg: rgba(13,13,14,.96);
+  --app-bg: radial-gradient(90% 70% at 100% 0,#262629 0%,#151517 42%,#0d0d0e 100%);
+  --app-glow: rgba(255,255,255,.06);
+  --panel-bg: linear-gradient(160deg,#252528,#151517);
+  --strip-fade: #131315;
+  --empty-a: #2c2c30;
+  --empty-b: #18181a;
+
+  /* the XMB preview: the PSP's own classic blue wave, not the app's colour */
+  --xmb-bg: #0e1a3a;
+  --xmb-wave-a: #2e63c9;
+  --xmb-wave-b: #163a8a;
+  --xmb-wave-c: #081433;
+
+  /* generated title cards (no art yet): near-neutral greys with a faint cool cast */
+  --card-gba-hue: 220; --card-gba-sat: 8; --card-gba-light: 32; --card-other-hue: 220; --card-spread: 30;
+
+  /* desktop window, dark */
+  --d-bg: #111113; --d-bg-2: #18181a; --d-bg-3: #202023; --d-panel: #141416; --d-card: #1b1b1e;
+  /* desktop window, light (app.css turns the accent black there) */
+  --dl-bg: #f4f4f4; --dl-bg-2: #e9e9ea; --dl-bg-3: #dededf;
+  --dl-text: #151516; --dl-text-2: #3a3a3d; --dl-text-3: #535357; --dl-text-4: #5d5d62;
+  --dl-line: rgba(21,21,22,.1); --dl-line-2: rgba(21,21,22,.2); --dl-hover: rgba(21,21,22,.05); --dl-sel: rgba(21,21,22,.08);
+  --dl-accent-text: #2b2b2e; --dl-ok-text: #46710a; --dl-info-text: #3b5168; --dl-bad-text: #b8123f; --dl-warn-text: #6a5a30;
+  --dl-focus: #151516;   /* the focus ring on light surfaces */
+}
+
+/* Graphite. Neutral near-black, no blue cast. Focus is white on grey; the one
    warm accent is the logo's amber. Warnings move to orange so they never read as the accent. */
-:root, :root[data-theme=graphite] {
+:root[data-theme=graphite] {
   --ink-0: #0a0a0b;   /* deepest */
   --ink-1: #111112;
   --ink-2: #19191b;

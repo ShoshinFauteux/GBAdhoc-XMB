@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-enum { TH_GRAPHITE, TH_SLATE, TH_TEAL, TH_CLASSIC, TH_COUNT };
+enum { TH_MONO, TH_GRAPHITE, TH_SLATE, TH_TEAL, TH_CLASSIC, TH_COUNT };
 
 typedef struct
 {
@@ -43,7 +43,7 @@ extern int g_theme;            /* index of g_th */
 
 /* select a theme by index; returns the index used */
 int theme_set(int i);
-/* "graphite" -> TH_GRAPHITE; -1 if unknown */
+/* "mono" -> TH_MONO; -1 if unknown */
 int theme_find(const char *id);
 
 #endif

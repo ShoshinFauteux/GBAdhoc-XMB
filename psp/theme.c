@@ -1,4 +1,4 @@
-/* theme.c -- the four themes; values from desktop/ui/brand.css (the design's
+/* theme.c -- the five themes; values from desktop/ui/brand.css (the design's
  * tokens, builds of the designer's mockup), see theme.h. */
 #include "theme.h"
 
@@ -6,7 +6,28 @@
 #include <strings.h>
 
 const theme_t g_themes[TH_COUNT] = {
-   /* Graphite (the default): neutral graphite, white focus, the logo's amber accent;
+   /* Mono (the default, owner 2026-11-05): true mono black, layered dark greys, off-white
+    * text, a soft silver accent; warn is a muted sand, info a cool grey-blue; the XMB
+    * badge is an outline (ui.c, ui_kit.c) */
+   { "mono", "Mono",
+     0xFF0B0B0Cu, 0xFFEEEEECu, 0xFFC6C6C4u, 0xFFA2A2A0u, 0xFF8A8A8Eu,
+     0xFFA2A2A0u,
+     0x1AFFFFFFu, 0x33FFFFFFu,
+     0xFFD6D8DCu, 0xFF0B0B0Cu, 0xFFE4E6EAu, 0xFFF4F5F7u, 0x1FD6D8DCu,
+     0x1CFFFFFFu, 0xFFFFFFFFu, 0xFF0B0B0Cu,
+     0xFF8FC1EEu,
+     0xFF8AC32Au, 0xFFC8B68Eu, 0xFFEF3F6Du, 0xFF8EA4BAu,
+     0xFFB7EA5Cu, 0xFFDDCFABu, 0xFFECE3CCu, 0xFFFF8AA8u, 0xFFDBE5EFu,
+     0x24C8B68Eu, 0x80C8B68Eu, 0x248EA4BAu, 0x738EA4BAu,
+     0xF50D0D0Eu,
+     { 0xFF262629u, 0xFF151517u, 0xFF0D0D0Eu },
+     0xFFFFFFu, 0.06f,
+     0xFF252528u, 0xFF151517u,
+     0xFF131315u,
+     0xFF2C2C30u, 0xFF18181Au,
+     0xFF0E1A3Au, { 0xFF2E63C9u, 0xFF163A8Au, 0xFF081433u },
+     220, 8, 32, 30 },
+   /* Graphite: neutral graphite, white focus, the logo's amber accent;
     * warn moves to orange so it is never the accent */
    { "graphite", "Graphite",
      0xFF0A0A0Bu, 0xFFF1F1F0u, 0xFFC8C8C6u, 0xFFA1A19Fu, 0xFF858589u,
@@ -85,13 +106,13 @@ const theme_t g_themes[TH_COUNT] = {
      270, 62, 44, 110 },
 };
 
-int g_theme = TH_GRAPHITE;
-const theme_t *g_th = &g_themes[TH_GRAPHITE];
+int g_theme = TH_MONO;
+const theme_t *g_th = &g_themes[TH_MONO];
 
 int theme_set(int i)
 {
    if (i < 0 || i >= TH_COUNT)
-      i = TH_GRAPHITE;
+      i = TH_MONO;
    g_theme = i;
    g_th = &g_themes[i];
    return i;

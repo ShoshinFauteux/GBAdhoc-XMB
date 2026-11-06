@@ -575,9 +575,9 @@
 
   // ---------- chrome wiring ----------
   // the colour theme (brand.css: <html data-theme>); dark/light is the window's own data-theme
-  const PALETTES = [['graphite', 'Graphite'], ['slate', 'Slate'], ['teal', 'Teal'], ['classic', 'Classic']];
+  const PALETTES = [['mono', 'Mono'], ['graphite', 'Graphite'], ['slate', 'Slate'], ['teal', 'Teal'], ['classic', 'Classic']];
   function setPalette(p) {
-    if (!PALETTES.some(x => x[0] === p)) p = 'graphite';
+    if (!PALETTES.some(x => x[0] === p)) p = 'mono';   // new installs: Mono (a saved choice is kept)
     document.documentElement.dataset.theme = p;
   }
   function setTheme(t) {

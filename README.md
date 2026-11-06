@@ -10,9 +10,9 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/licence-GPL--2.0--or--later-5a5a5f" alt="Licence: GPL-2.0-or-later"></a>
-  <a href="https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases"><img src="https://img.shields.io/badge/release-0.2.0--beta.1%20(pre--release)-5b94d6" alt="Release: 0.2.0-beta.1, pre-release"></a>
-  <img src="https://img.shields.io/badge/PSP-1000%20%C2%B7%202000%20%C2%B7%203000%20%C2%B7%20Go-6b7686" alt="PSP-1000, 2000, 3000 and Go">
-  <img src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-6b7686" alt="Windows 10 and 11">
+  <a href="https://github.com/ShoshinFauteux/GBAdhoc-XMB/releases"><img src="https://img.shields.io/badge/release-0.2.0--beta.1%20(pre--release)-4a4a4f" alt="Release: 0.2.0-beta.1, pre-release"></a>
+  <img src="https://img.shields.io/badge/PSP-1000%20%C2%B7%202000%20%C2%B7%203000%20%C2%B7%20Go-4a4a4f" alt="PSP-1000, 2000, 3000 and Go">
+  <img src="https://img.shields.io/badge/Windows-10%20%C2%B7%2011-4a4a4f" alt="Windows 10 and 11">
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 <p align="center">
   <img src="docs/img/hero.png" alt="GBAdhoc XMB for Windows, with Pokemon Emerald's entry open and its XMB preview, and in front of it a PSP whose screen shows GBAdhoc XMB's library with Golden Sun selected" width="880">
   <br>
-  <sub><b>The Windows app and the PSP app</b>, in the Slate theme. Both screens captured from the real apps, on a test folder of placeholder ROMs; the PSP is a 3D render of the <a href="https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761">Sony PSP model</a> by <a href="https://sketchfab.com/strov">Ilya Ostrovsky</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
+  <sub><b>The Windows app and the PSP app</b>, in the Mono theme. Both screens captured from the real apps, on a test folder of placeholder ROMs; the PSP is a 3D render of the <a href="https://sketchfab.com/3d-models/sony-psp-dca89d10ec304d0cab76837750df7761">Sony PSP model</a> by <a href="https://sketchfab.com/strov">Ilya Ostrovsky</a>, <a href="http://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>.</sub>
 </p>
 
 **GBAdhoc XMB is a companion to [GBAdhoc](https://github.com/ShoshinFauteux/GBAdhoc),** the
@@ -38,8 +38,8 @@ XMB and it opens straight into GBAdhoc, with the same saves and save states as t
 It comes as two apps with one design. **The PSP app** does everything on the console: it
 finds your ROMs, recognises them, fetches their art over Wi-Fi and makes the entries.
 **The Windows app** does the same over USB, for a whole library at once.
-Both come in four colour themes, chosen in Settings: **Graphite** (the default), **Slate**,
-shown here, **Teal** and **Classic**.
+Both come in five colour themes, chosen in Settings: **Mono**, the default, shown here,
+**Graphite**, **Slate**, **Teal** and **Classic**.
 
 **New: play online from your PC.** The Windows app can host GBAdhoc's online link play: press
 *Host*, send your friend a four-letter code, and your PSPs link over the internet, directly
@@ -222,14 +222,16 @@ These are the problems found in the first real sessions.
 - **Previews the XMB** for each game before it writes anything.
 - **Uses the PSP's own network settings** and works offline: without Wi-Fi you can still make
   entries with the art already on the stick.
-- **Four colour themes.** Graphite (neutral greys with an amber accent, the default), Slate
-  (cool greys, steel blue), Teal (the logo's teal) and Classic (the indigo and violet of the
-  first beta). Change it in Settings › Theme with ◀ and ▶; it applies at once and is kept.
+- **Five colour themes.** Mono (true mono black: layered dark greys, off-white text and a
+  soft silver accent, the default), Graphite (neutral greys with an amber accent), Slate (cool
+  greys, steel blue), Teal (the logo's teal) and Classic (the indigo and violet of the first
+  beta). Change it in Settings › Theme with ◀ and ▶; it applies at once and is kept. A theme you
+  chose before is kept; new installs start in Mono.
 
 ### Windows app
 
 - **One exe, nothing to install.** The UI is inside it, shown by the WebView2 runtime that
-  Windows 10 and 11 include. The same four colour themes as the PSP app, in Settings › Theme,
+  Windows 10 and 11 include. The same five colour themes as the PSP app, in Settings › Theme,
   each in dark or light.
 - **Finds the PSP by itself**, whatever drive letter Windows gives it, on a PSP-1000, 2000, 3000
   or Go. A Go's Memory Stick and internal storage are both shown.

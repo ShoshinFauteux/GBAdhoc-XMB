@@ -196,8 +196,11 @@ void kit_top(const char *dim, const char *bold)
    float x, rx;
    kit_logo(LOGO_TOP, 8, 4, 66, 24, 1);
    /* XMB plate: 37.9 x 16 at (82,8), r4 */
-   gfx_rrect(82, 8, 37.91f, 16, 4, C_ACCENT);
-   gfx_text_n(XF_800_10, 87, 8 + face_baseline(XF_800_10, 12.5f) + 1.75f, "XMB", -1, 1.4f, C_ACCENT_INK);
+   if (g_theme == TH_MONO)   /* Mono: an outline, 2 px (1 px aliases on the LCD) */
+      gfx_rring(82, 8, 37.91f, 16, 4, 2, C_FG);
+   else
+      gfx_rrect(82, 8, 37.91f, 16, 4, C_ACCENT);
+   gfx_text_n(XF_800_10, 87, 8 + face_baseline(XF_800_10, 12.5f) + 1.75f, "XMB", -1, 1.4f, g_theme == TH_MONO ? C_FG : C_ACCENT_INK);
    /* the right cluster, laid out from the right edge (468) */
    wall_hm(&hh, &mm);
    snprintf(right, sizeof(right), "%02d:%02d", hh, mm);

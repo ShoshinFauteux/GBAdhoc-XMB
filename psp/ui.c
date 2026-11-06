@@ -306,8 +306,11 @@ static void draw_boot(view *v)
       {
          float ww = text_wt(XF_800_12, "XMB", 4.08f) + 8 + 11 - 4.08f, wy = y0 + 72 + 8 * (1 - k2);
          gfx_push(0, 0, 1, k2 > 0 ? 1 : 0);
-         gfx_rrect(240 - ww / 2, wy, ww, 21, 5, C_ACCENT);
-         gfx_text_n(XF_800_12, 240 - ww / 2 + 11, wy + 3 + face_baseline(XF_800_12, 15), "XMB", -1, 4.08f, C_ACCENT_INK);
+         if (g_theme == TH_MONO)   /* Mono: an outline, 2 px (1 px aliases on the LCD) */
+            gfx_rring(240 - ww / 2, wy, ww, 21, 5, 2, C_FG);
+         else
+            gfx_rrect(240 - ww / 2, wy, ww, 21, 5, C_ACCENT);
+         gfx_text_n(XF_800_12, 240 - ww / 2 + 11, wy + 3 + face_baseline(XF_800_12, 15), "XMB", -1, 4.08f, g_theme == TH_MONO ? C_FG : C_ACCENT_INK);
          gfx_pop();
       }
       {

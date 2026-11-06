@@ -18,7 +18,7 @@ int g_ngames;
 entry_t g_entries[MAX_ENTRIES];
 int g_nentries;
 storage_t g_st;
-prefs_t g_prefs = { 1, 0, 1, TH_GRAPHITE };
+prefs_t g_prefs = { 1, 0, 1, TH_MONO };   /* new installs: Mono; a saved theme is kept */
 int g_scan_ver;
 
 /* ---- status ---- */

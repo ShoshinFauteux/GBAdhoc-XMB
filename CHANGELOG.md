@@ -58,7 +58,15 @@ Join with code.
 - Tests: the Online tab's new states (`online_ui.js`, 125 checks). `test_online directory` runs
   the loopback directory alone, for the README screenshots.
 
-**README:** shown in Slate, with a neutral outlined "XMB" mark and neutral badges. Every image
+**Mono, the new default theme (both apps, owner 2026-11-05).** A true mono black: a near-black
+ground with layered dark greys, off-white and mid-grey text, and one soft silver accent. There
+is no orange or yellow: warnings are a muted sand and info is a cool grey-blue. Gradients stop
+short of pure black. The XMB badge is an outline, 2 px on the PSP (1 px lines alias on the LCD).
+In the light window the accent turns black. Text meets WCAG AA (fg-4 on cards 5.0:1). New
+installs start in Mono, and a saved theme is kept. Graphite, Slate, Teal and Classic stay
+selectable. `tools/test_themes.py` covers five themes.
+
+**README:** shown in Mono, with a neutral outlined "XMB" mark and neutral badges. Every image
 is recaptured: the PSP app in PPSSPP, the Windows app with its own capture, and the hero with
 the real PSP model. A *Play online* section adds steps and troubleshooting.
 
