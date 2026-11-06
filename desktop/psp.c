@@ -1332,7 +1332,7 @@ int psp_remove(const jv *args, sb *out, char *code, char *err, size_t cap)
 
 /* ---- pictures and folders ----------------------------------------------- */
 
-static void list_images(const char *dir, sb *out, int *n)
+static void list_images(const char *dir, sb *out, int *n, int cap)
 {
    char pat[1200];
    wchar_t *w;
@@ -1367,7 +1367,7 @@ static void list_images(const char *dir, sb *out, int *n)
          sb_add(out, "}");
       }
       free(name);
-   } while (*n < 24 && FindNextFileW(h, &fd));
+   } while (*n < cap && FindNextFileW(h, &fd));
    FindClose(h);
 }
 
@@ -1380,9 +1380,26 @@ void psp_pictures(const jv *args, sb *out)
    if (psp_find(jv_str(args, "dev", ""), &d) == 0)
    {
       u_join(p, sizeof(p), d.root, "PICTURE");
-      list_images(p, out, &n);
+      list_images(p, out, &n, 24);
       u_join(p, sizeof(p), d.root, "PSP/PICTURE");
-      list_images(p, out, &n);
+      list_images(p, out, &n, 24);
+   }
+   sb_add(out, "]");
+}
+
+/* The owner's pictures in the PSP app's folder, PSP/GAME/GBAdhocXMB/custom:
+ * <ROM stem>.png is a game's icon, <ROM stem>.bg.png its background (the
+ * PSP app reads the same folder, so either side makes the same entry). */
+void psp_custom(const jv *args, sb *out)
+{
+   psp_dev d;
+   char p[1200];
+   int n = 0;
+   sb_add(out, "[");
+   if (psp_find(jv_str(args, "dev", ""), &d) == 0)
+   {
+      u_join(p, sizeof(p), d.root, "PSP/GAME/GBAdhocXMB/custom");
+      list_images(p, out, &n, 256);
    }
    sb_add(out, "]");
 }

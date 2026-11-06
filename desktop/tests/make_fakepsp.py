@@ -7,6 +7,7 @@ DIR/PSP/GAME/GBAdhoc   a GBAdhoc install (a stand-in EBOOT.PBP titled "GBAdhoc")
   boxart/, hero/       art GBAdhoc "already has" for some, drawn here
 DIR/PSP/GAME/SOMEAPP   another homebrew, which the app must leave alone
 DIR/PICTURE            two pictures
+DIR/PSP/GAME/GBAdhocXMB/custom   Golden Sun's own icon and background (custom folder)
 The design's sample library: Emerald, Kirby, Mario Kart (in roms/racing),
 Golden Sun, two ROM hacks (roms/hacks), Crystal (GBC), Tetris (GB) and one
 ROM no list knows.  Existing entries are made by the test with xmbwrap."""
@@ -132,6 +133,11 @@ def main():
     png(os.path.join(g, "boxart", "Mario Kart - Super Circuit (USA).png"), 256, 256, (240, 90, 40), (58, 16, 48), (190, 220))
     png(os.path.join(g, "hero", "Mario Kart - Super Circuit (USA).png"), 480, 272, (58, 16, 48), (240, 90, 40))
     png(os.path.join(g, "boxart", "Pokemon - Crystal Version (USA, Europe) (Rev 1).png"), 224, 224, (57, 198, 232), (21, 58, 110), (170, 196))
+    # the owner's own pictures in the XMB app's custom folder: Golden Sun's
+    # icon (box-art shaped) and background (not 480x272, so it is scaled)
+    cust = os.path.join(root, "PSP", "GAME", "GBAdhocXMB", "custom")
+    png(os.path.join(cust, "Golden Sun (USA, Europe).png"), 200, 240, (250, 200, 60), (120, 40, 10), (150, 180))
+    png(os.path.join(cust, "Golden Sun (USA, Europe).bg.png"), 640, 360, (120, 40, 10), (250, 200, 60))
     png(os.path.join(root, "PICTURE", "sunset.png"), 480, 272, (240, 140, 60), (60, 20, 70))
     png(os.path.join(root, "PICTURE", "wallpaper-forest.png"), 480, 272, (60, 140, 80), (10, 40, 20))
     if "--go" in sys.argv:

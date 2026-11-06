@@ -15,6 +15,7 @@
   const games = [];
   const state = {};
   const pictures = [];
+  const customs = [];   // PSP/GAME/GBAdhocXMB/custom: {name, src, path}
   const storage = { device: '', id: '', letter: '', label: 'Memory Stick', totalMB: 0, freeMB: 0, isGo: false, kind: 'ms0',
     gbadhoc: 'PSP/GAME/GBAdhoc', gbadhocVersion: '', installTitle: '', folders: [], root: '' };
   let devices = [];
@@ -83,23 +84,44 @@ ${text}
   }
 
   // The ICON0 as it will be written, 144x80, as layered DOM. (design A)
+  // ICON0 layouts (the PSP app's art.c draws the same five):
+  //   side    box art left, the title right, over the art blurred (the default)
+  //   tile    the blur frame: box art as large as it fits over a blurred, darkened copy
+  //   smart   filled, anchored at the box's title band (top, or bottom when the logo is there)
+  //   stretch filled after a mild 1.3x horizontal stretch, same anchor
+  //   fit     fitted on a transparent icon
+  const FITS = [['side', 'Box + title'], ['tile', 'Blur frame'], ['smart', 'Smart fill'], ['stretch', 'Stretch'], ['fit', 'Fitted']];
+  const FIT_DEFAULT = 'side';
+  const composed = new Map(), composing = new Set();
+  let composedTimer = 0;
+  function iconKey(g) { const s = state[g.id]; return [s.icon.kind, iconSrc(g) || '', bgSrc(g) || '', s.iconFit, s.title].join('|'); }
   function iconHTML(g, cls) {
     const s = state[g.id]; const ic = iconSrc(g); const bg = bgSrc(g);
     const mode = s.iconFit;
     if (s.icon.kind === 'entry') return `<div class="ic0 ${cls || ''}"><div class="l fill" style="background-image:url('${ic}')"></div></div>`;
-    if (!ic && !(mode === 'tile' && bg)) return `<div class="ic0 ${cls || ''} card"><div class="l fill" style="background-image:url('${titleCard(g)}')"></div></div>`;
-    if (mode === 'fill') return `<div class="ic0 ${cls || ''}"><div class="l fill" style="background-image:url('${ic}')"></div></div>`;
-    if (mode === 'fit') return `<div class="ic0 ${cls || ''} transparent"><div class="l fit" style="background-image:url('${ic}')"></div></div>`;
-    if (!ic) return `<div class="ic0 ${cls || ''}"><div class="l fill" style="background-image:url('${bg}')"></div></div>`;
-    return `<div class="ic0 ${cls || ''}"><div class="l blur" style="background-image:url('${bg || ic}')"></div><div class="l fit" style="background-image:url('${ic}')"></div></div>`;
+    if (!hasIcon(g)) return `<div class="ic0 ${cls || ''} card"><div class="l fill" style="background-image:url('${titleCard(g)}')"></div></div>`;
+    const key = iconKey(g), done = composed.get(key);   // null: it could not be composed
+    if (done) return `<div class="ic0 ${cls || ''} ${mode === 'fit' ? 'transparent' : ''}"><div class="l fill" style="background-image:url('${done}')"></div></div>`;
+    if (!composed.has(key) && !composing.has(key)) {
+      composing.add(key);
+      composeIcon(g).then(url => { composed.set(key, url); }).catch(() => { composed.set(key, null); }).finally(() => {
+        composing.delete(key);
+        clearTimeout(composedTimer);
+        composedTimer = setTimeout(() => { if (window.XMB.onComposed) window.XMB.onComposed(); }, 60);
+      });
+    }
+    // until it is composed: the box art fitted over its blur
+    return `<div class="ic0 ${cls || ''}"><div class="l blur" style="background-image:url('${bg || ic}')"></div><div class="l fit" style="background-image:url('${ic || bg}')"></div></div>`;
   }
-  function hasIcon(g) { const s = state[g.id]; return !!(iconSrc(g) || (s.iconFit === 'tile' && bgSrc(g))); }
-  function fitLabel(m, g) { if (g && !hasIcon(g)) return 'Title card (no art yet)'; return m === 'tile' ? 'Tile · hero + box art' : m === 'fit' ? 'Box art fitted' : 'Box art filled'; }
+  function hasIcon(g) { const s = state[g.id]; return !!(iconSrc(g) || (s.iconFit !== 'fit' && bgSrc(g))); }
+  function fitName(m) { const f = FITS.find(x => x[0] === m); return f ? f[1] : 'Box + title'; }
+  function fitLabel(m, g) { if (g && !hasIcon(g)) return 'Title card (no art yet)'; return fitName(m); }
   function sourceLabel(c) {
     if (!c || c.kind === 'none') return 'None';
     if (c.kind === 'own') return "GBAdhoc's own";
     if (c.kind === 'scraped') return c.region ? 'Internet · ' + c.region : 'Internet';
     if (c.kind === 'picture') return c.name;
+    if (c.kind === 'custom') return 'Your picture · ' + c.name;
     if (c.kind === 'entry') return 'In the XMB now';
     return c.kind;
   }
@@ -149,19 +171,34 @@ ${text}
   function freshState(g, prev) {
     const s = {
       title: g.entry ? g.entry.title : (g.shortTitle || g.file.replace(/\.[^.]+$/, '')),
-      icon: { kind: 'none' }, bg: { kind: 'none' }, iconFit: 'tile', fetched: null, marked: false
+      icon: { kind: 'none' }, bg: { kind: 'none' }, iconFit: FIT_DEFAULT, fetched: null, marked: false
     };
-    if (g.ownBoxart && prefs.preferOwn) s.icon = { kind: 'own', src: g.ownBoxart, path: g.ownBoxartPath };
-    if (g.ownHero && prefs.preferOwn) s.bg = { kind: 'own', src: g.ownHero, path: g.ownHeroPath };
+    // the owner's own pictures in the custom folder come before anything else
+    const ci = customFor(g, false), cb = customFor(g, true);
+    if (ci) s.icon = { kind: 'custom', name: ci.name, src: ci.src, path: ci.path };
+    if (cb) s.bg = { kind: 'custom', name: cb.name, src: cb.src, path: cb.path };
+    if (!ci && g.ownBoxart && prefs.preferOwn) s.icon = { kind: 'own', src: g.ownBoxart, path: g.ownBoxartPath };
+    if (!cb && g.ownHero && prefs.preferOwn) s.bg = { kind: 'own', src: g.ownHero, path: g.ownHeroPath };
     // an entry already in the XMB starts from what it has now
-    if (g.entry && g.entry.iconUrl && s.icon.kind === 'none' && s.bg.kind === 'none') s.icon = { kind: 'entry', src: g.entry.iconUrl };
-    if (g.entry && g.entry.picUrl && s.bg.kind === 'none') s.bg = { kind: 'entry', src: g.entry.picUrl };
+    if (!ci && !cb && g.entry && g.entry.iconUrl && s.icon.kind === 'none' && s.bg.kind === 'none') s.icon = { kind: 'entry', src: g.entry.iconUrl };
+    if (!cb && g.entry && g.entry.picUrl && s.bg.kind === 'none') s.bg = { kind: 'entry', src: g.entry.picUrl };
     if (prev) { // keep choices made this session (rescan after a write)
-      s.title = prev.title; s.iconFit = prev.iconFit; s.fetched = prev.fetched;
+      s.title = prev.title; s.iconFit = FITS.some(f => f[0] === prev.iconFit) ? prev.iconFit : FIT_DEFAULT; s.fetched = prev.fetched;
       if (prev.icon.kind !== 'none' && prev.icon.kind !== 'entry') s.icon = prev.icon;
       if (prev.bg.kind !== 'none' && prev.bg.kind !== 'entry') s.bg = prev.bg;
     }
     return s;
+  }
+  // <ROM stem>.png = icon, <ROM stem>.bg.png = background; names match without case
+  function customFor(g, bg) {
+    const stem = (g.stem || '').toLowerCase();
+    if (!stem) return null;
+    return customs.find(c => {
+      const n = c.name.toLowerCase();
+      if (!n.startsWith(stem)) return false;
+      const rest = n.slice(stem.length);
+      return bg ? /^\.bg\.[a-z]+$/.test(rest) : /^\.[a-z]+$/.test(rest);
+    }) || null;
   }
   async function scan(onProgress) {
     const list = await H.call('devices');
@@ -169,6 +206,8 @@ ${text}
     setDevice(d);
     if (!d) { games.length = 0; return []; }
     const res = await H.call('scan', { dev: d.id, folders: prefs.folders }, (p) => onProgress && onProgress(p));
+    customs.length = 0;
+    try { (await H.call('custom', { dev: d.id })).forEach(p => customs.push({ name: p.name, src: p.url, path: p.path })); } catch (e) { /* none */ }
     const prevState = Object.assign({}, state);
     games.length = 0;
     for (const k of Object.keys(state)) delete state[k];
@@ -251,29 +290,138 @@ ${text}
     const dw = iw * sc, dh = ih * sc;
     ctx.drawImage(im, -inset + (W - dw) / 2, -inset + (Hh - dh) / 2, dw, dh);
   }
+  // the rect of an image that is not (nearly) transparent
+  function opaqueRect(im) {
+    const w = im.naturalWidth || im.width, h = im.naturalHeight || im.height;
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const c = cv.getContext('2d', { willReadFrequently: true }); c.drawImage(im, 0, 0);
+    const d = c.getImageData(0, 0, w, h).data;
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 24) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; y1 = y; }
+    return x1 >= x0 ? { x0, y0, x1: x1 + 1, y1: y1 + 1 } : { x0: 0, y0: 0, x1: w, y1: h };
+  }
+  // the full-width part of r covering w:h, anchored at the top band (title); `stretch` widens first
+  function coverTop(r, w, h, stretch) {
+    const sw = r.x1 - r.x0, sh = r.y1 - r.y0, a = sw * stretch / sh, want = w / h, o = Object.assign({}, r);
+    if (a < want) { const ch = sw * stretch / want; let y0 = r.y0 + sh * 0.03; if (y0 + ch > r.y1) y0 = r.y1 - ch; o.y0 = y0; o.y1 = y0 + ch; }
+    else { const cw = sh * want / stretch; o.x0 = r.x0 + (sw - cw) / 2; o.x1 = o.x0 + cw; }
+    return o;
+  }
+  // top or bottom: the window whose rows carry more saturation-weighted edge energy (art.c cover_title)
+  function coverTitle(im, r, w, h, stretch) {
+    const top = coverTop(r, w, h, stretch);
+    if (top.y1 - top.y0 >= r.y1 - r.y0 - 1) return top;
+    const bot = Object.assign({}, top); bot.y1 = r.y1 - (r.y1 - r.y0) * 0.03; bot.y0 = bot.y1 - (top.y1 - top.y0);
+    const sw = 48, sh = Math.round(sw * (r.y1 - r.y0) / (r.x1 - r.x0));
+    if (sh < 8) return top;
+    const cv = document.createElement('canvas'); cv.width = sw; cv.height = sh;
+    const c = cv.getContext('2d', { willReadFrequently: true }); c.imageSmoothingQuality = 'high';
+    c.drawImage(im, r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, 0, 0, sw, sh);
+    const d = c.getImageData(0, 0, sw, sh).data, k = sh / (r.y1 - r.y0);
+    let et = 0, eb = 0;
+    for (let y = 1; y < sh - 1; y++) {
+      let e = 0; const fy = r.y0 + (y + 0.5) / k;
+      for (let x = 1; x < sw - 1; x++) {
+        const i = (y * sw + x) * 4, q = i + 4, u = i + sw * 4, R = d[i], G = d[i + 1], B = d[i + 2];
+        const mx = Math.max(R, G, B), mn = Math.min(R, G, B), sat = mx ? (mx - mn) / mx : 0;
+        const gx = Math.abs(d[q] - R) + Math.abs(d[q + 1] - G) + Math.abs(d[q + 2] - B);
+        const gy = Math.abs(d[u] - R) + Math.abs(d[u + 1] - G) + Math.abs(d[u + 2] - B);
+        e += (gx + gy) * (0.4 + sat);
+      }
+      if (fy >= top.y0 && fy < top.y1) et += e;
+      if (fy >= bot.y0 && fy < bot.y1) eb += e;
+    }
+    return eb > et * 1.2 ? bot : top;
+  }
+  function softBackdrop(ctx, im, dark) {
+    ctx.save(); ctx.filter = `blur(5px) saturate(1.2) brightness(${dark})`;
+    drawFit(ctx, im, 144, 80, true, 9); ctx.restore();
+  }
+  function boxWithShadow(ctx, im, r, x, y, w, h) {
+    ctx.save(); ctx.shadowColor = 'rgba(0,0,0,.63)'; ctx.shadowBlur = 6; ctx.shadowOffsetY = 2;
+    ctx.drawImage(im, r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0, x, y, w, h); ctx.restore();
+  }
+  // greedy wrap with canvas metrics; null when a word is wider than maxw
+  function wrapTitle(ctx, t, maxw) {
+    const lines = []; let cur = '';
+    for (const w of t.split(/\s+/).filter(Boolean)) {
+      if (ctx.measureText(w).width > maxw) return null;
+      const n = cur ? cur + ' ' + w : w;
+      if (ctx.measureText(n).width <= maxw) cur = n; else { lines.push(cur); cur = w; }
+    }
+    if (cur) lines.push(cur);
+    return lines;
+  }
   async function composeIcon(g) {
     const s = state[g.id]; const cv = document.createElement('canvas'); cv.width = 144; cv.height = 80;
     const ctx = cv.getContext('2d'); ctx.imageSmoothingQuality = 'high';
     const ic = iconSrc(g), bg = bgSrc(g), mode = s.iconFit;
-    if (s.icon.kind === 'entry') { drawFit(ctx, await loadImg(ic), 144, 80, true); }
-    else if (!ic && !(mode === 'tile' && bg)) { drawFit(ctx, await loadImg(titleCard(g)), 144, 80, true); }
-    else if (mode === 'fill') drawFit(ctx, await loadImg(ic), 144, 80, true);
-    else if (mode === 'fit') drawFit(ctx, await loadImg(ic), 144, 80, false);
-    else if (!ic) drawFit(ctx, await loadImg(bg), 144, 80, true);
-    else {
-      // tile: the background art blurred behind (as .ic0 .l.blur), the box art fitted in front
-      ctx.fillStyle = '#0a0c1e'; ctx.fillRect(0, 0, 144, 80);
-      ctx.save(); ctx.filter = 'blur(7px) saturate(1.25)'; ctx.globalAlpha = 0.95;
-      drawFit(ctx, await loadImg(bg || ic), 144, 80, true, 12); ctx.restore();
-      drawFit(ctx, await loadImg(ic), 144, 80, false);
+    if (s.icon.kind === 'entry') { drawFit(ctx, await loadImg(ic), 144, 80, true); return cv.toDataURL('image/png'); }
+    if (!hasIcon(g)) { drawFit(ctx, await loadImg(titleCard(g)), 144, 80, true); return cv.toDataURL('image/png'); }
+    if (!ic) { drawFit(ctx, await loadImg(bg), 144, 80, true); return cv.toDataURL('image/png'); }
+    const im = await loadImg(ic);
+    // a finished 144x80 picture of the owner's is the icon as it is
+    if (s.icon.kind === 'custom' && im.naturalWidth === 144 && im.naturalHeight === 80) { ctx.drawImage(im, 0, 0); return cv.toDataURL('image/png'); }
+    const r = opaqueRect(im), rw = r.x1 - r.x0, rh = r.y1 - r.y0;
+    if (mode === 'smart' || mode === 'stretch') {
+      const c = coverTitle(im, r, 144, 80, mode === 'stretch' ? 1.3 : 1);
+      ctx.drawImage(im, c.x0, c.y0, c.x1 - c.x0, c.y1 - c.y0, 0, 0, 144, 80);
+      return cv.toDataURL('image/png');
     }
+    if (mode === 'fit') {
+      const sc = Math.min(144 / rw, 80 / rh), w = Math.round(rw * sc), h = Math.round(rh * sc);
+      ctx.drawImage(im, r.x0, r.y0, rw, rh, Math.floor((144 - w) / 2), Math.floor((80 - h) / 2), w, h);
+      return cv.toDataURL('image/png');
+    }
+    ctx.fillStyle = '#0a0c1e'; ctx.fillRect(0, 0, 144, 80);
+    const back = bg ? await loadImg(bg).catch(() => im) : im;
+    if (mode === 'side') {
+      try { await document.fonts.load('800 15px Inter'); } catch (e) { /* the fallback face */ }
+      const title = (s.title || '').trim();
+      let bh = 70, fit = null, bw = 0;
+      for (let k = 0; k < 2 && !fit; k++, bh -= 10) {
+        bw = Math.min(76, Math.round(rw * bh / rh));
+        const tx = 5 + bw + 7;
+        for (const fs of [16, 15, 14, 13, 12, 11]) {
+          ctx.font = `800 ${fs}px Inter, "Segoe UI", Arial, sans-serif`;
+          const lines = wrapTitle(ctx, title, 144 - tx - 5);
+          if (lines && lines.length <= 4 && lines.length * fs * 1.08 <= 72) { fit = { lines, fs, tx, bh }; break; }
+        }
+      }
+      if (!fit) { bh = 70; bw = Math.min(76, Math.round(rw * bh / rh)); fit = { lines: [title.slice(0, 9)], fs: 11, tx: 5 + bw + 7, bh }; }
+      bh = fit.bh; bw = Math.min(76, Math.round(rw * bh / rh)); if (bw === 76) bh = Math.round(rh * 76 / rw);
+      softBackdrop(ctx, back, 0.42);
+      boxWithShadow(ctx, im, r, 5, Math.floor((80 - bh) / 2), bw, bh);
+      ctx.font = `800 ${fit.fs}px Inter, "Segoe UI", Arial, sans-serif`;
+      const lh = fit.fs * 1.08, y0 = 40 - fit.lines.length * lh / 2 + fit.fs * 0.78;
+      fit.lines.forEach((l, j) => {
+        ctx.fillStyle = 'rgba(0,0,0,.59)'; ctx.fillText(l, fit.tx + 1, y0 + j * lh + 1);
+        ctx.fillStyle = '#fff'; ctx.fillText(l, fit.tx, y0 + j * lh);
+      });
+      return cv.toDataURL('image/png');
+    }
+    // tile, the blur frame
+    const sc = Math.min(140 / rw, 76 / rh), w = Math.round(rw * sc), h = Math.round(rh * sc);
+    softBackdrop(ctx, back, 0.6);
+    boxWithShadow(ctx, im, r, Math.floor((144 - w) / 2), Math.floor((80 - h) / 2), w, h);
     return cv.toDataURL('image/png');
   }
+  // GBAdhoc's hero art (its own hero folder, or GBAdhoc-heroart) keeps its bottom 44 of 272 rows
+  // dark for the Marquee's hint bar; the XMB has none, so the top 228/272 fills the screen, the
+  // width taken from the right edge so the subject stays right (psp/art.c art_pic1, the same rule)
+  const HERO_KEEP = 228 / 272;
+  function isHero(c) { return !!c && (c.kind === 'own' || c.kind === 'scraped'); }
   async function composePic(g) {
     const bg = bgSrc(g); if (!bg) return null;
     const cv = document.createElement('canvas'); cv.width = 480; cv.height = 272;
     const ctx = cv.getContext('2d'); ctx.imageSmoothingQuality = 'high';
-    drawFit(ctx, await loadImg(bg), 480, 272, true);
+    const im = await loadImg(bg);
+    if (isHero(state[g.id].bg)) {
+      const w = im.naturalWidth, h = im.naturalHeight;
+      let uh = h * HERO_KEEP, uw = uh * 480 / 272, x0 = w - uw;
+      if (x0 < 0) { uw = w; uh = uw * 272 / 480; x0 = 0; }
+      ctx.drawImage(im, x0, 0, uw, uh, 0, 0, 480, 272);
+    } else drawFit(ctx, im, 480, 272, true);
     return cv.toDataURL('image/png');
   }
   function folderFor(title) {
@@ -296,7 +444,7 @@ ${text}
       icon = await composeIcon(g);
       pic = await composePic(g);
     } catch (e) { step({ ok: false, code: 'bad', msg: e.message }); return { ok: false, code: 'bad', steps }; }
-    if (s.icon.kind !== 'none' || (s.iconFit === 'tile' && s.bg.kind !== 'none')) step({ msg: 'ICON0.PNG made (144×80, ' + (s.icon.kind === 'entry' ? 'as it is now' : s.iconFit === 'tile' ? 'tile' : s.iconFit === 'fit' ? 'fitted' : 'filled') + ')' });
+    if (hasIcon(g)) step({ msg: 'ICON0.PNG made (144×80, ' + (s.icon.kind === 'entry' ? 'as it is now' : fitName(s.iconFit)) + ')' });
     else step({ msg: 'ICON0.PNG made (144×80 title card: no art for this game yet)', warn: true });
     if (pic) step({ msg: 'PIC1.PNG made (480×272)' });
     else step({ msg: 'No background chosen: the XMB wave shows through', warn: true });
@@ -364,7 +512,7 @@ ${text}
     if (opts.arrive) requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('arrive')));
     const catX = (i) => 96 + (i - 4) * (i < 4 ? 44 : 60);
     div.innerHTML = `
-      <div class="xmbp-bg" style="${bg ? `background-image:url('${bg}')` : ''}"></div>
+      <div class="xmbp-bg" style="${bg ? `background-image:url('${bg}')${!opts.noBg && isHero(s.bg) ? ';background-size:auto ' + (100 / HERO_KEEP).toFixed(2) + '%;background-position:right top' : ''}` : ''}"></div>
       ${bg ? '' : '<div class="xmbp-wave"><i></i></div>'}
       <div class="xmbp-cats">${CATS.map(([k, label], i) => `<span class="xmbp-cat ${k === 'game' ? 'on' : ''}" style="left:${catX(i)}px">${GLYPHS[k]}${k === 'game' ? `<b>${label}</b>` : ''}</span>`).join('')}</div>
       <div class="xmbp-clock">${opts.clock || new Date().toTimeString().slice(0, 5)}<span class="batt"></span></div>
@@ -428,7 +576,7 @@ ${text}
 
   function savePrefs() { return H.call('store', { key: 'prefs', value: prefs }).catch(() => {}); }
 
-  window.XMB = { scenario, games, state, pictures, storage, prefs, get devices() { return devices; }, freeMB, fmtMB, ENTRY_KB, titleCard, iconSrc, bgSrc,
+  window.XMB = { scenario, games, state, pictures, customs, FITS, fitName, onComposed: null, storage, prefs, get devices() { return devices; }, freeMB, fmtMB, ENTRY_KB, titleCard, iconSrc, bgSrc,
     iconHTML, hasIcon, fitLabel, sourceLabel, status, fetchArt, applyFetch, makeEntry, removeEntry, repairEntry, scan, refreshDevice,
     pickDevice, setDevice, netStatus, delay, xmbPreview, injectPreviewCSS, savePrefs, where, folderFor, composeIcon, composePic, freshState };
 })();

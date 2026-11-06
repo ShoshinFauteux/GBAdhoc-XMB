@@ -447,17 +447,34 @@ void gfx_tex_opaque(const gtex *t, float sx, float sy, float sw, float sh, float
 }
 
 /* ---- shape tiles --------------------------------------------------------
- * A tile is the top-left quarter of a rounded box's coverage: size T x T
- * covering [-o, T-o) on both axes, where the box's edges are at 0 and the
- * corner circle's centre at (r, r).  Plus an "edge" column: coverage across
- * a straight edge.  Coverage is 4x4 supersampled (fill/ring) or a Gaussian
- * of the signed distance (blur), so a 1.5 px border reads as 1.5 px. */
+ * A tile is the WHOLE coverage image of a small rounded box: a box 2c x 2c
+ * with corner radius r, its edges at texel o and o+2c, inside an S x S
+ * image (S = 2(o+c)).  Coverage is 4x4 supersampled (fill/ring) or a
+ * Gaussian of the signed distance (blur), so a 1.5 px border reads as
+ * 1.5 px.  Any box is drawn as a 9-slice of it: the four corners come from
+ * the image's own four corners, the edges stretch the image's middle
+ * row/column (the two middle texels are equal, by symmetry).
+ *
+ * WHY THIS LAYOUT (owner, PSP Go: jagged pills/rings, a dark line through
+ * the boot "XMB" pill exactly where its bottom corners begin).  The first
+ * version stored one quarter and MIRRORED it for the other three corners
+ * with flipped UVs (u1 < u0), sampled GU_NEAREST.  The GE does not sample a
+ * flipped sprite at the same texel PPSSPP does: the right/bottom pieces
+ * land one texel off -- onto the empty padding column/row (and past the
+ * end of a T-row allocation for the bottom corners) -- giving a transparent
+ * seam row/column and lopsided corners on hardware that PPSSPP never shows.
+ * Now no piece is flipped, every image has a zero margin of >= 1 texel on
+ * all sides plus one more zero row/column for the bilinear neighbour, and
+ * tiles are sampled GU_LINEAR: at whole-pixel positions a pixel centre
+ * hits a texel centre (identical to NEAREST); at fractional positions and
+ * under the transition scale the edge stays anti-aliased instead of
+ * stair-stepping. */
 
 typedef struct
 {
    int key;
-   gtex t;             /* T8: corner T x T at (0,0); edge profile in column T+1 */
-   int T, o;
+   gtex t;             /* T8, S x S image (+1 zero row/column) */
+   int o, c, S;
    int used;
 } tile;
 
@@ -502,11 +519,12 @@ static float erf_approx(float x)
    return s * y;
 }
 
+/* coverage of the pixel whose top-left is (x, y), box-local, top-left quadrant */
 static float cover(float x, float y, float r, float stroke, float blur)
 {
    if (blur > 0)
    {
-      float sigma = blur / 2, d = sd_corner(x, y, r);
+      float sigma = blur / 2, d = sd_corner(x + 0.5f, y + 0.5f, r);
       return 0.5f + 0.5f * erf_approx(d / (sigma * 1.41421356f));
    }
    {
@@ -522,10 +540,47 @@ static float cover(float x, float y, float r, float stroke, float blur)
    }
 }
 
+static tile *tile_slot(int key)
+{
+   int i, best = 0;
+   tile *t;
+   for (i = 1; i < NTILES; i++)
+      if (g_tiles[i].used < g_tiles[best].used)
+         best = i;
+   t = &g_tiles[best];
+   if (t->key && t->t.px)
+   {
+      /* the list being built may still point at it: free after the frame */
+      if (g_nlate < (int)(sizeof(g_late) / sizeof(g_late[0])))
+         g_late[g_nlate++] = t->t.px;
+   }
+   memset(t, 0, sizeof(*t));
+   t->key = key;
+   t->used = ++g_tile_clock;
+   g_bound = NULL;
+   return t;
+}
+
+static int tile_alloc(tile *t, int S)
+{
+   int n = S + 1;                       /* + the zero neighbour row/column */
+   t->S = S;
+   t->t.w = t->t.h = n;
+   t->t.tw = pow2(n);
+   t->t.th = pow2(n);
+   t->t.bw = (n + 15) & ~15;            /* T8 rows: multiple of 16 bytes */
+   t->t.psm = GU_PSM_T8;
+   t->t.px = memalign(16, (size_t)t->t.bw * n);
+   if (!t->t.px)
+      return -1;
+   memset(t->t.px, 0, (size_t)t->t.bw * n);
+   return 0;
+}
+
 static tile *get_tile(float r, float stroke, float blur)
 {
    int kr = (int)(r * 4 + 0.5f), ks = (int)(stroke * 4 + 0.5f), kb = (int)(blur * 2 + 0.5f);
-   int key = 1 + kr + (ks << 10) + (kb << 18), i, best = 0;
+   int key = 1 + kr + (ks << 10) + (kb << 18), i;
    tile *t;
    for (i = 0; i < NTILES; i++)
       if (g_tiles[i].key == key)
@@ -533,122 +588,41 @@ static tile *get_tile(float r, float stroke, float blur)
          g_tiles[i].used = ++g_tile_clock;
          return &g_tiles[i];
       }
-   for (i = 1; i < NTILES; i++)
-      if (g_tiles[i].used < g_tiles[best].used)
-         best = i;
-   t = &g_tiles[best];
-   if (t->key)
-   {
-      /* the list being built may still point at it: free after the frame */
-      if (g_nlate < (int)(sizeof(g_late) / sizeof(g_late[0])))
-         g_late[g_nlate++] = t->t.px;
-   }
-   memset(t, 0, sizeof(*t));
+   t = tile_slot(key);
    r = kr / 4.0f;
    stroke = ks / 4.0f;
    blur = kb / 2.0f;
-   t->o = (int)ceilf(blur * 1.6f);
-   t->T = (int)ceilf((r > stroke ? r : stroke) + blur * 1.6f) + t->o + 1;
+   t->o = (int)ceilf(blur * 1.6f) + 1;                                   /* >= 1 texel of nothing outside */
+   t->c = (int)ceilf((r > stroke ? r : stroke) + blur * 1.6f) + 1;       /* reach inward from an edge */
+   if (tile_alloc(t, 2 * (t->o + t->c)) != 0)
    {
-      int T = t->T, o = t->o, W = T + 2, x, y;
-      unsigned char *p;
-      t->t.w = W;
-      t->t.h = T;
-      t->t.tw = pow2(W);
-      t->t.th = pow2(T);
-      t->t.bw = (W + 15) & ~15;
-      t->t.psm = GU_PSM_T8;
-      t->t.px = memalign(16, (size_t)t->t.bw * T);
-      p = (unsigned char *)t->t.px;
-      memset(p, 0, (size_t)t->t.bw * T);
-      for (y = 0; y < T; y++)
-      {
-         for (x = 0; x < T; x++)
-            p[y * t->t.bw + x] = (unsigned char)(cover((float)(x - o), (float)(y - o), r, stroke, blur) * 255 + 0.5f);
-         /* edge profile: across a straight edge, far from any corner */
-         p[y * t->t.bw + T + 1] = (unsigned char)(cover(1000.0f, (float)(y - o), r, stroke, blur) * 255 + 0.5f);
-      }
-      sceKernelDcacheWritebackRange(p, (unsigned)(t->t.bw * T));
+      t->key = 0;
+      return NULL;
    }
-   t->key = key;
-   t->used = ++g_tile_clock;
-   g_bound = NULL;
+   {
+      int S = t->S, o = t->o, B = 2 * t->c, x, y;
+      unsigned char *p = (unsigned char *)t->t.px;
+      for (y = 0; y < S; y++)
+      {
+         int ly = y - o;
+         if (ly >= t->c) ly = B - 1 - ly;          /* mirror: pixel [l, l+1) <-> [B-1-l, B-l) */
+         for (x = 0; x < S; x++)
+         {
+            int lx = x - o;
+            if (lx >= t->c) lx = B - 1 - lx;
+            p[y * t->t.bw + x] = (unsigned char)(cover((float)lx, (float)ly, r, stroke, blur) * 255 + 0.5f);
+         }
+      }
+      sceKernelDcacheWritebackRange(p, (unsigned)(t->t.bw * t->t.h));
+   }
    return t;
 }
 
-/* draw a texture region with arbitrary UVs at the quad's 4 corners */
-static void quad4(float u[4], float v[4], float x, float y, float w, float h, uint32_t c)
-{
-   tv *q = (tv *)sceGuGetMemory(4 * sizeof(tv));
-   float xs[4] = { x, x + w, x, x + w }, ys[4] = { y, y, y + h, y + h };
-   int i;
-   for (i = 0; i < 4; i++)
-   {
-      q[i].u = u[i]; q[i].v = v[i]; q[i].c = c;
-      q[i].x = X(xs[i]); q[i].y = Y(ys[i]); q[i].z = 0;
-   }
-   sceGuDrawArray(GU_TRIANGLE_STRIP, TV_FMT, 4, 0, q);
-}
-
-/* The 9-slice: box (x,y,w,h) whose edges sit at the tile's 0 line.  `fill`
- * = draw the middle as well (fills and shadows; rings leave it empty). */
-static void nine(tile *t, float x, float y, float w, float h, uint32_t c, int fill)
-{
-   int T = t->T, o = t->o;
-   float in = (float)(T - o);          /* how far the tile reaches inward */
-   float cw = in, ch = in, ge;
-   uint32_t gc = C(c);
-   if (cw * 2 > w) cw = w / 2;
-   if (ch * 2 > h) ch = h / 2;
-   bind(&t->t, 0, GU_TCC_RGBA);
-   ge = (float)(T + 1) + 0.5f;         /* edge column */
-   /* corners: u from 0 (outside) to o+cw */
-   {
-      float a = (float)o + cw, b = (float)o + ch;
-      quad_uv(0, 0, a, b, x - o, y - o, a, b, gc);                                   /* tl */
-      quad_uv(a, 0, 0, b, x + w - cw, y - o, a, b, gc);                              /* tr */
-      quad_uv(0, b, a, 0, x - o, y + h - ch, a, b, gc);                              /* bl */
-      quad_uv(a, b, 0, 0, x + w - cw, y + h - ch, a, b, gc);                         /* br */
-   }
-   /* edges */
-   if (w - 2 * cw > 0)
-   {
-      float u[4] = { ge, ge, ge, ge };
-      float v[4] = { 0, 0, (float)o + ch, (float)o + ch };
-      quad4(u, v, x + cw, y - o, w - 2 * cw, o + ch, gc);                            /* top */
-      {
-         float v2[4] = { (float)o + ch, (float)o + ch, 0, 0 };
-         quad4(u, v2, x + cw, y + h - ch, w - 2 * cw, o + ch, gc);                   /* bottom */
-      }
-   }
-   if (h - 2 * ch > 0)
-   {
-      /* left: the profile runs along x, so rotate: u fixed (edge col), v = x */
-      float u[4] = { ge, ge, ge, ge };
-      float v[4] = { 0, (float)o + cw, 0, (float)o + cw };
-      quad4(u, v, x - o, y + ch, o + cw, h - 2 * ch, gc);
-      {
-         float v2[4] = { (float)o + cw, 0, (float)o + cw, 0 };
-         quad4(u, v2, x + w - cw, y + ch, o + cw, h - 2 * ch, gc);
-      }
-   }
-   if (fill && w - 2 * cw > 0 && h - 2 * ch > 0)
-   {
-      /* the tile's inside is full coverage for fills (and for shadows once
-       * past the blur); draw it as a plain rect */
-      cv *v = (cv *)sceGuGetMemory(2 * sizeof(cv));
-      v[0].c = v[1].c = gc;
-      v[0].x = X(x + cw); v[0].y = Y(y + ch); v[0].z = 0;
-      v[1].x = X(x + w - cw); v[1].y = Y(y + h - ch); v[1].z = 0;
-      sceGuDisable(GU_TEXTURE_2D);
-      sceGuDrawArray(GU_SPRITES, CV_FMT, 2, 0, v);
-   }
-}
-
-/* ---- the 9-slice with an affine (linear-gradient) fill ----
- * Every sub-quad takes its vertex colours from the box's corner colours,
- * interpolated at the vertex: Gouraud shading reproduces an affine
- * gradient exactly, and the corners keep their anti-aliased coverage. */
+/* ---- the 9-slice ----
+ * box (x,y,w,h); the pieces reach o outside it (the soft edge / margin).
+ * Colour: one colour, or (lin) an affine gradient over the box -- every
+ * vertex takes the box's corner colours interpolated at the vertex, which
+ * Gouraud shading reproduces exactly. */
 static uint32_t g_lin[4];
 static float g_lx, g_ly, g_lw, g_lh;
 
@@ -658,24 +632,77 @@ static uint32_t lin_at(float x, float y)
    return col_mix(col_mix(g_lin[0], g_lin[1], u), col_mix(g_lin[2], g_lin[3], u), v);
 }
 
-static void quad4c(float u[4], float v[4], float x, float y, float w, float h)
+static void piece(int lin, uint32_t gc, float u0, float v0, float u1, float v1, float x0, float y0, float x1, float y1)
 {
-   tv *q = (tv *)sceGuGetMemory(4 * sizeof(tv));
-   float xs[4] = { x, x + w, x, x + w }, ys[4] = { y, y, y + h, y + h };
-   int i;
-   for (i = 0; i < 4; i++)
+   if (x1 <= x0 || y1 <= y0)
+      return;
+   if (!lin)
    {
-      q[i].u = u[i]; q[i].v = v[i]; q[i].c = C(lin_at(xs[i], ys[i]));
-      q[i].x = X(xs[i]); q[i].y = Y(ys[i]); q[i].z = 0;
+      tv *q = (tv *)sceGuGetMemory(2 * sizeof(tv));
+      q[0].u = u0; q[0].v = v0; q[0].c = gc; q[0].x = X(x0); q[0].y = Y(y0); q[0].z = 0;
+      q[1].u = u1; q[1].v = v1; q[1].c = gc; q[1].x = X(x1); q[1].y = Y(y1); q[1].z = 0;
+      sceGuDrawArray(GU_SPRITES, TV_FMT, 2, 0, q);
+      return;
    }
-   sceGuDrawArray(GU_TRIANGLE_STRIP, TV_FMT, 4, 0, q);
+   {
+      tv *q = (tv *)sceGuGetMemory(4 * sizeof(tv));
+      float xs[4] = { x0, x1, x0, x1 }, ys[4] = { y0, y0, y1, y1 };
+      float us[4] = { u0, u1, u0, u1 }, vs[4] = { v0, v0, v1, v1 };
+      int i;
+      for (i = 0; i < 4; i++)
+      {
+         q[i].u = us[i]; q[i].v = vs[i]; q[i].c = C(lin_at(xs[i], ys[i]));
+         q[i].x = X(xs[i]); q[i].y = Y(ys[i]); q[i].z = 0;
+      }
+      sceGuDrawArray(GU_TRIANGLE_STRIP, TV_FMT, 4, 0, q);
+   }
+}
+
+static void nine_ex(tile *t, float x, float y, float w, float h, uint32_t c, int fill, int lin)
+{
+   float o = (float)t->o, S = (float)t->S, mid = (float)(t->o + t->c);
+   float cw = (float)t->c, ch = (float)t->c;
+   uint32_t gc = lin ? 0 : C(c);
+   if (cw * 2 > w) cw = w / 2;
+   if (ch * 2 > h) ch = h / 2;
+   bind(&t->t, 1, GU_TCC_RGBA);
+   /* corners, each from its own corner of the image */
+   piece(lin, gc, 0, 0, o + cw, o + ch, x - o, y - o, x + cw, y + ch);
+   piece(lin, gc, S - o - cw, 0, S, o + ch, x + w - cw, y - o, x + w + o, y + ch);
+   piece(lin, gc, 0, S - o - ch, o + cw, S, x - o, y + h - ch, x + cw, y + h + o);
+   piece(lin, gc, S - o - cw, S - o - ch, S, S, x + w - cw, y + h - ch, x + w + o, y + h + o);
+   /* edges: the middle column / row stretched */
+   piece(lin, gc, mid, 0, mid, o + ch, x + cw, y - o, x + w - cw, y + ch);
+   piece(lin, gc, mid, S - o - ch, mid, S, x + cw, y + h - ch, x + w - cw, y + h + o);
+   piece(lin, gc, 0, mid, o + cw, mid, x - o, y + ch, x + cw, y + h - ch);
+   piece(lin, gc, S - o - cw, mid, S, mid, x + w - cw, y + ch, x + w + o, y + h - ch);
+   if (fill && w - 2 * cw > 0 && h - 2 * ch > 0)
+   {
+      /* the inside is full coverage: a plain rect */
+      float x0 = x + cw, y0 = y + ch, x1 = x + w - cw, y1 = y + h - ch;
+      if (lin)
+         gfx_grad(x0, y0, x1 - x0, y1 - y0, lin_at(x0, y0), lin_at(x1, y0), lin_at(x0, y1), lin_at(x1, y1));
+      else
+      {
+         cv *v = (cv *)sceGuGetMemory(2 * sizeof(cv));
+         v[0].c = v[1].c = gc;
+         v[0].x = X(x0); v[0].y = Y(y0); v[0].z = 0;
+         v[1].x = X(x1); v[1].y = Y(y1); v[1].z = 0;
+         sceGuDisable(GU_TEXTURE_2D);
+         sceGuDrawArray(GU_SPRITES, CV_FMT, 2, 0, v);
+      }
+   }
+}
+
+static void nine(tile *t, float x, float y, float w, float h, uint32_t c, int fill)
+{
+   if (t)
+      nine_ex(t, x, y, w, h, c, fill, 0);
 }
 
 void gfx_rrect_lin(float x, float y, float w, float h, float r, uint32_t tl, uint32_t tr, uint32_t bl, uint32_t br)
 {
    tile *t;
-   int T, o;
-   float in, cw, ch, ge, a, b;
    if (w <= 0 || h <= 0)
       return;
    if (r > w / 2) r = w / 2;
@@ -683,40 +710,8 @@ void gfx_rrect_lin(float x, float y, float w, float h, float r, uint32_t tl, uin
    g_lin[0] = tl; g_lin[1] = tr; g_lin[2] = bl; g_lin[3] = br;
    g_lx = x; g_ly = y; g_lw = w; g_lh = h;
    t = get_tile(r, 0, 0);
-   T = t->T; o = t->o;
-   in = (float)(T - o);
-   cw = in; ch = in;
-   if (cw * 2 > w) cw = w / 2;
-   if (ch * 2 > h) ch = h / 2;
-   bind(&t->t, 0, GU_TCC_RGBA);
-   ge = (float)(T + 1) + 0.5f;
-   a = (float)o + cw;
-   b = (float)o + ch;
-   {
-      float u1[4] = { 0, a, 0, a }, v1[4] = { 0, 0, b, b };
-      float u2[4] = { a, 0, a, 0 }, v3[4] = { b, b, 0, 0 };
-      quad4c(u1, v1, x - o, y - o, a, b);
-      quad4c(u2, v1, x + w - cw, y - o, a, b);
-      quad4c(u1, v3, x - o, y + h - ch, a, b);
-      quad4c(u2, v3, x + w - cw, y + h - ch, a, b);
-   }
-   if (w - 2 * cw > 0)
-   {
-      float u[4] = { ge, ge, ge, ge }, v[4] = { 0, 0, b, b }, v2[4] = { b, b, 0, 0 };
-      quad4c(u, v, x + cw, y - o, w - 2 * cw, b);
-      quad4c(u, v2, x + cw, y + h - ch, w - 2 * cw, b);
-   }
-   if (h - 2 * ch > 0)
-   {
-      float u[4] = { ge, ge, ge, ge }, v[4] = { 0, a, 0, a }, v2[4] = { a, 0, a, 0 };
-      quad4c(u, v, x - o, y + ch, a, h - 2 * ch);
-      quad4c(u, v2, x + w - cw, y + ch, a, h - 2 * ch);
-   }
-   if (w - 2 * cw > 0 && h - 2 * ch > 0)
-   {
-      float x0 = x + cw, y0 = y + ch, x1 = x + w - cw, y1 = y + h - ch;
-      gfx_grad(x0, y0, x1 - x0, y1 - y0, lin_at(x0, y0), lin_at(x1, y0), lin_at(x0, y1), lin_at(x1, y1));
-   }
+   if (t)
+      nine_ex(t, x, y, w, h, 0, 1, 1);
 }
 
 void gfx_rrect(float x, float y, float w, float h, float r, uint32_t c)
@@ -784,49 +779,47 @@ void gfx_ring(float cx, float cy, float rad, float stroke, uint32_t c)
 void gfx_corner_mask(float x, float y, float w, float h, float r, uint32_t tl, uint32_t tr, uint32_t bl, uint32_t br)
 {
    /* an inverted fill tile: coverage of "outside the rounded corner" */
-   tile *t;
+   tile *t, *src;
    int kr = (int)(r * 4 + 0.5f), key = 1 + kr + (1 << 29), i;
+   float o, S, a;
    for (i = 0; i < NTILES; i++)
       if (g_tiles[i].key == key)
          break;
    if (i == NTILES)
    {
-      t = get_tile(r, 0, 0);
+      int k, n;
+      src = get_tile(r, 0, 0);
+      if (!src)
+         return;
+      src->used = ++g_tile_clock;            /* not the slot we are about to take */
+      t = tile_slot(key);
+      t->o = src->o;
+      t->c = src->c;
+      if (tile_alloc(t, src->S) != 0)
       {
-         /* make a private inverted copy under its own key */
-         tile *n = NULL;
-         int j, best = 0;
-         for (j = 1; j < NTILES; j++)
-            if (g_tiles[j].used < g_tiles[best].used && &g_tiles[j] != t)
-               best = j;
-         n = &g_tiles[best];
-         if (n->key && g_nlate < NTILES)
-            g_late[g_nlate++] = n->t.px;
-         *n = *t;
-         n->t.px = memalign(16, (size_t)t->t.bw * t->T);
-         {
-            unsigned char *s = (unsigned char *)t->t.px, *d = (unsigned char *)n->t.px;
-            int k;
-            for (k = 0; k < t->t.bw * t->T; k++)
-               d[k] = (unsigned char)(255 - s[k]);
-            sceKernelDcacheWritebackRange(d, (unsigned)(t->t.bw * t->T));
-         }
-         n->key = key;
-         n->used = ++g_tile_clock;
-         g_bound = NULL;
-         i = (int)(n - g_tiles);
+         t->key = 0;
+         return;
       }
+      n = t->t.bw * t->t.h;
+      {
+         const unsigned char *s = (const unsigned char *)src->t.px;
+         unsigned char *d = (unsigned char *)t->t.px;
+         for (k = 0; k < n; k++)
+            d[k] = (unsigned char)(255 - s[k]);
+      }
+      sceKernelDcacheWritebackRange(t->t.px, (unsigned)n);
+      i = (int)(t - g_tiles);
    }
    t = &g_tiles[i];
    t->used = ++g_tile_clock;
-   bind(&t->t, 0, GU_TCC_RGBA);
-   {
-      float a = r;
-      quad_uv(0, 0, a, a, x, y, a, a, C(tl));
-      quad_uv(a, 0, 0, a, x + w - a, y, a, a, C(tr));
-      quad_uv(0, a, a, 0, x, y + h - a, a, a, C(bl));
-      quad_uv(a, a, 0, 0, x + w - a, y + h - a, a, a, C(br));
-   }
+   bind(&t->t, 1, GU_TCC_RGBA);
+   o = (float)t->o;
+   S = (float)t->S;
+   a = r;
+   piece(0, C(tl), o, o, o + a, o + a, x, y, x + a, y + a);
+   piece(0, C(tr), S - o - a, o, S - o, o + a, x + w - a, y, x + w, y + a);
+   piece(0, C(bl), o, S - o - a, o + a, S - o, x, y + h - a, x + a, y + h);
+   piece(0, C(br), S - o - a, S - o - a, S - o, S - o, x + w - a, y + h - a, x + w, y + h);
 }
 
 void gfx_tex_vfade(const gtex *t, float sx, float sy, float sw, float sh, float x, float y, float w, float h,

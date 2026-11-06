@@ -107,12 +107,25 @@ def emit(o, name, im):
     return (name, w, h, tw, th)
 
 
+def snapped(im):
+    """the underline on whole pixel rows (tools/snap_rule.py says why)"""
+    sys.path.insert(0, HERE)
+    from snap_rule import snap
+    w, h = im.size
+    px = [[im.getpixel((x, y)) for x in range(w)] for y in range(h)]
+    snap(px, w, h)
+    for y in range(h):
+        for x in range(w):
+            im.putpixel((x, y), px[y][x])
+    return im
+
+
 def main():
     glyphs = sys.argv[1] if len(sys.argv) > 1 else os.path.join(HERE, 'glyphs.js')
     logo = Image.open(os.path.join(REPO, 'desktop', 'ui', 'assets', 'logo-dark@2x.png'))
-    arts = [('logo_top', premul_resize(logo, (66, 24))),
-            ('logo_boot', premul_resize(logo, (176, 64))),
-            ('logo_item', premul_resize(logo, (104, 38)))]
+    arts = [('logo_top', snapped(premul_resize(logo, (66, 24)))),
+            ('logo_boot', snapped(premul_resize(logo, (176, 64)))),
+            ('logo_item', snapped(premul_resize(logo, (104, 38))))]
     gl = chrome_raster(glyph_svgs(glyphs), (22, 34))
     for (name, sz), im in sorted(gl.items()):
         arts.append((f'cat_{name}_{sz}', im))

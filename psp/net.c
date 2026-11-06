@@ -56,15 +56,37 @@
 
 enum { ST_DOWN, ST_MOD_COMMON, ST_MOD_INET, ST_NET, ST_INET, ST_RESOLVER, ST_APCTL };
 static int g_progress = ST_DOWN;
+/* the last failing step and its firmware code, for the screen and the log */
+static const char *volatile g_err_step = "";
+static volatile unsigned g_err_code;
 
 static unsigned now_ms(void)
 {
    return (unsigned)(sceKernelGetSystemTimeWide() / 1000);
 }
 
+static int fail(int rc, const char *step, unsigned code)
+{
+   g_err_step = step;
+   g_err_code = code;
+   return rc;
+}
+
+const char *net_last_error(unsigned *code)
+{
+   if (code) *code = g_err_code;
+   return g_err_step;
+}
+
 int net_wlan_switch(void)
 {
    return sceWlanGetSwitchState() != 0;
+}
+
+/* sceUtilityLoadNetModule on a module that is already in: tolerated */
+static int already(int rc)
+{
+   return rc == (int)0x80110F02 || rc == (int)0x80111102;
 }
 
 int net_init(void)
@@ -75,42 +97,47 @@ int net_init(void)
    if (g_progress < ST_MOD_COMMON)
    {
       rc = sceUtilityLoadNetModule(PSP_NET_MODULE_COMMON);
-      if (rc < 0 && rc != (int)0x80110F02)     /* already loaded */
-         return NET_E_INIT;
+      if (rc < 0 && !already(rc))
+         return fail(NET_E_INIT, "load net module", (unsigned)rc);
       g_progress = ST_MOD_COMMON;
    }
    if (g_progress < ST_MOD_INET)
    {
       rc = sceUtilityLoadNetModule(PSP_NET_MODULE_INET);
-      if (rc < 0 && rc != (int)0x80110F02)
-         return NET_E_INIT;
+      if (rc < 0 && !already(rc))
+         return fail(NET_E_INIT, "load inet module", (unsigned)rc);
       g_progress = ST_MOD_INET;
    }
    if (g_progress < ST_NET)
    {
-      if (sceNetInit(NET_POOL, NET_PRIO, NET_STACK, NET_PRIO, NET_STACK) < 0)
-         return NET_E_INIT;
+      if ((rc = sceNetInit(NET_POOL, NET_PRIO, NET_STACK, NET_PRIO, NET_STACK)) < 0)
+         return fail(NET_E_INIT, "sceNetInit", (unsigned)rc);
       g_progress = ST_NET;
    }
    if (g_progress < ST_INET)
    {
-      if (sceNetInetInit() < 0)
-         return NET_E_INIT;
+      if ((rc = sceNetInetInit()) < 0)
+         return fail(NET_E_INIT, "sceNetInetInit", (unsigned)rc);
       g_progress = ST_INET;
    }
    if (g_progress < ST_RESOLVER)
    {
-      if (sceNetResolverInit() < 0)
-         return NET_E_INIT;
+      if ((rc = sceNetResolverInit()) < 0)
+         return fail(NET_E_INIT, "sceNetResolverInit", (unsigned)rc);
       g_progress = ST_RESOLVER;
    }
    if (g_progress < ST_APCTL)
    {
-      if (sceNetApctlInit(APCTL_STACK, APCTL_PRIO) < 0)
-         return NET_E_INIT;
+      if ((rc = sceNetApctlInit(APCTL_STACK, APCTL_PRIO)) < 0)
+         return fail(NET_E_INIT, "sceNetApctlInit", (unsigned)rc);
       g_progress = ST_APCTL;
    }
    return NET_OK;
+}
+
+int net_ready(void)
+{
+   return g_progress == ST_APCTL;
 }
 
 int net_state(void)
@@ -123,35 +150,89 @@ int net_state(void)
    return st == PSP_NET_APCTL_STATE_DISCONNECTED ? NET_OFF : NET_CONNECTING;
 }
 
+/* The XMB's saved connections.  sceUtilityCheckNetParam returns 0 when the
+ * slot EXISTS; slots are 1-based and may have gaps (one deleted in the
+ * middle), so every slot is probed (GBAdhoc's mgift_net.c does the same). */
+int net_profiles(int *slots, int max)
+{
+   int i, n = 0;
+   for (i = 1; i <= 10 && n < max; i++)
+      if (sceUtilityCheckNetParam(i) == 0)
+         slots[n++] = i;
+   return n;
+}
+
+int net_profile_name(int slot, char *out, size_t cap)
+{
+   netData d;
+   if (!cap)
+      return -1;
+   out[0] = '\0';
+   memset(&d, 0, sizeof(d));
+   if (sceUtilityGetNetParam(slot, PSP_NETPARAM_NAME, &d) < 0)
+      return -1;
+   snprintf(out, cap, "%.*s", (int)sizeof(d.asString), d.asString);
+   return 0;
+}
+
+/* leave the AP and wait until apctl says so: terminating, connecting again
+ * or opening the network dialog under a live association wedges the next
+ * bring-up (mgift_net.c) */
+static void wait_disconnected(void)
+{
+   int i;
+   for (i = 0; i < 100; i++)
+   {
+      int st = 0;
+      if (sceNetApctlGetState(&st) < 0 || st == PSP_NET_APCTL_STATE_DISCONNECTED)
+         return;
+      if (i == 0)
+         sceNetApctlDisconnect();
+      sceKernelDelayThread(50000);
+   }
+}
+
 int net_connect(int config, volatile int *cancel)
 {
    unsigned t0;
-   int rc;
+   int rc, seen = 0, last = 0;
    if (!net_wlan_switch())
-      return NET_E_OFFLINE;
+      return fail(NET_E_OFFLINE, "Wi-Fi switch off", 0);
    if ((rc = net_init()) != NET_OK)
       return rc;
    if (net_state() == NET_ONLINE)
       return NET_OK;
-   if (sceNetApctlConnect(config < 1 ? 1 : config) < 0)
-      return NET_E_OFFLINE;
+   wait_disconnected();
+   if ((rc = sceNetApctlConnect(config < 1 ? 1 : config)) < 0)
+      return fail(NET_E_OFFLINE, "sceNetApctlConnect", (unsigned)rc);
    t0 = (unsigned)sceKernelGetSystemTimeLow();
    for (;;)
    {
       int st = 0;
-      if (sceNetApctlGetState(&st) < 0)
-         return NET_E_OFFLINE;
+      if ((rc = sceNetApctlGetState(&st)) < 0)
+         return fail(NET_E_OFFLINE, "sceNetApctlGetState", (unsigned)rc);
       if (st == PSP_NET_APCTL_STATE_GOT_IP)
          return NET_OK;
+      if (st != PSP_NET_APCTL_STATE_DISCONNECTED)
+      {
+         seen = 1;
+         last = st;
+      }
+      else if (seen)
+      {
+         /* apctl gave up on its own (AP not found, auth, DHCP): the code is
+          * the last state it reached (1 scan, 2 join, 3 DHCP, 5/6 auth) */
+         return fail(NET_E_OFFLINE, "connection dropped at apctl state", (unsigned)last);
+      }
       if (cancel && *cancel)
       {
-         sceNetApctlDisconnect();
-         return NET_E_CANCEL;
+         wait_disconnected();
+         return fail(NET_E_CANCEL, "cancelled", 0);
       }
       if ((unsigned)sceKernelGetSystemTimeLow() - t0 > CONNECT_WAIT_US)
       {
-         sceNetApctlDisconnect();
-         return NET_E_TIMEOUT;
+         wait_disconnected();
+         return fail(NET_E_TIMEOUT, "timed out at apctl state", (unsigned)last);
       }
       sceKernelDelayThread(50000);
    }
@@ -174,20 +255,9 @@ void net_info(char *ssid, size_t ssid_cap, char *ip, size_t ip_cap)
 
 void net_disconnect(void)
 {
-   int i;
    if (g_progress < ST_APCTL)
       return;
-   sceNetApctlDisconnect();
-   /* let the radio leave the AP before anything is torn down
-    * (mgift_net.c: terminating under a live association wedges the next
-    * bring-up) */
-   for (i = 0; i < 100; i++)
-   {
-      int st = 0;
-      if (sceNetApctlGetState(&st) < 0 || st == PSP_NET_APCTL_STATE_DISCONNECTED)
-         break;
-      sceKernelDelayThread(50000);
-   }
+   wait_disconnected();
 }
 
 void net_term(void)

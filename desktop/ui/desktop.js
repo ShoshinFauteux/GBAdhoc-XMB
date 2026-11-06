@@ -3,6 +3,15 @@
 (function () {
   'use strict';
   const X = window.XMB; X.injectPreviewCSS();
+  const FIT_HINT = {
+    side: 'The whole box art on the left, the title beside it, over the art blurred.',
+    tile: 'The box art as large as it fits, over a blurred, darkened copy of the hero (or of itself).',
+    smart: 'Box art filling the icon, kept on its title band (top, or bottom when the logo sits there).',
+    stretch: 'Box art widened 1.3× so less is cropped, kept on its title band.',
+    fit: 'Box art fitted on a transparent icon; the XMB shows at the sides.'
+  };
+  // composed icons arrive after the first paint: draw again with the real pixels
+  X.onComposed = () => { if (typeof render === 'function' && !document.querySelector('.ovl')) render(); };
   const H = window.HOST;
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const $ = (id) => document.getElementById(id);
@@ -162,10 +171,10 @@
       <div class="fld"><label>Title in the XMB</label><input type="text" id="title" maxlength="64" value="${esc(s.title)}"><div class="hint" id="title-hint">${titleHint(s.title, folder)}</div>${sugg.length ? `<div class="sg">${sugg.map(t => `<span data-t="${esc(t)}">${esc(t)}</span>`).join('')}</div>` : ''}</div>
       <div class="fld"><div class="rowh"><label>Box art</label><span class="lk" data-pick="icon">Change…</span></div>${choiceHTML(g, 'icon')}</div>
       <div class="fld"><div class="rowh"><label>Hero art · PIC1 480×272</label><span class="lk" data-pick="bg">Change…</span></div>${choiceHTML(g, 'bg')}</div>
-      <div class="fld"><div class="rowh"><label>Icon · ICON0 144×80</label><span class="seg" id="fit"><b class="${s.iconFit === 'tile' ? 'on' : ''}" data-f="tile">Tile</b><b class="${s.iconFit === 'fit' ? 'on' : ''}" data-f="fit">Fit</b><b class="${s.iconFit === 'fill' ? 'on' : ''}" data-f="fill">Fill</b></span></div><div class="hint">${s.icon.kind === 'entry' ? 'The icon the entry has now. Choose box art to make a new one.' : !X.hasIcon(g) ? 'No art yet: the icon is a title card with the game\'s name. Add box art or a hero to change it.' : s.iconFit === 'tile' ? 'Hero behind, box art in front: a real 144×80 icon.' : s.iconFit === 'fit' ? 'Box art fitted on a transparent icon; the background shows at the sides.' : 'Box art cropped to fill the icon.'}</div></div>
+      <div class="fld"><div class="rowh"><label>Icon · ICON0 144×80</label><span class="seg" id="fit">${X.FITS.map(([k, n]) => `<b class="${s.iconFit === k ? 'on' : ''}" data-f="${k}">${n}</b>`).join('')}</span></div><div class="hint">${s.icon.kind === 'entry' ? 'The icon the entry has now. Choose box art to make a new one.' : !X.hasIcon(g) ? 'No art yet: the icon is a title card with the game\'s name. Add box art or a hero to change it.' : FIT_HINT[s.iconFit] || ''}</div></div>
       <div class="fld"><label>What gets written</label><div class="ini">PSP/GAME/${esc(folder)}/
   EBOOT.PBP     launcher, 130 KB
-  ICON0.PNG     ${s.icon.kind === 'entry' ? '144×80 · as it is now' : !X.hasIcon(g) ? '144×80 title card (no art yet)' : '144×80 · ' + (s.iconFit === 'tile' ? 'tile of hero + box art' : s.iconFit === 'fit' ? 'box art fitted' : 'box art filled')}
+  ICON0.PNG     ${s.icon.kind === 'entry' ? '144×80 · as it is now' : !X.hasIcon(g) ? '144×80 title card (no art yet)' : '144×80 · ' + X.fitName(s.iconFit).toLowerCase()}
   PIC1.PNG      ${s.bg.kind === 'none' ? '(none: XMB wave)' : '480×272 from ' + esc(X.sourceLabel(s.bg))}
   launch.ini    rom = ${esc(romRel(g))}
                 gbadhoc = ${esc(X.storage.gbadhoc)}</div><div class="hint">The ROM is never copied. Saves, states and settings stay GBAdhoc's.</div></div>
@@ -222,6 +231,13 @@
         if (which === 'icon') s.icon = v; else s.bg = v;
         d.close(); render(); return;
       }
+      if (c.kind === 'custom') {
+        // checked before use: it must decode (the PC resizes it to 144×80 / 480×272)
+        const ok = await new Promise(r => { const im = new Image(); im.onload = () => r(im.naturalWidth >= 16 && im.naturalHeight >= 16); im.onerror = () => r(false); im.src = c.src; });
+        if (!ok) { toast(c.name + ' is not a picture this PC can read', 'warn'); return; }
+        const v = { kind: 'custom', name: c.name, src: c.src, path: c.path };
+        if (which === 'icon') s.icon = v; else s.bg = v; d.close(); render(); return;
+      }
       const v = c.kind === 'own' ? { kind: 'own', src: c.src, path: c.path } : c.kind === 'none' ? { kind: 'none' } : c.kind === 'entry' ? { kind: 'entry', src: c.src } : c.kind === 'picture' ? { kind: 'picture', name: c.name, src: c.src, path: c.path } : which === 'icon' ? { kind: 'scraped', region: c.region, conf: c.conf, src: c.src, path: c.path } : { kind: 'scraped', src: c.src, path: c.path };
       if (which === 'icon') s.icon = v; else s.bg = v; d.close(); render();
     }));
@@ -236,6 +252,9 @@
       if (which === 'icon') f.box.forEach(c => out.push({ kind: 'scraped', label: c.region, meta: c.below ? 'below the match line' : 'libretro-thumbnails', conf: c.conf, below: c.below, src: c.src, path: c.path, region: c.region }));
       else if (f.hero) out.push({ kind: 'scraped', label: 'GBAdhoc-heroart', meta: f.hero.name + '.png', src: f.hero.src, path: f.hero.path });
     } else if (g.recognised) out.push({ kind: 'fetch', label: 'Internet', meta: X.scenario.offline ? 'offline' : 'look it up' });
+    // the custom folder (PSP/GAME/GBAdhocXMB/custom): this game's own file first, then the rest
+    const stem = (g.stem || '').toLowerCase(), mine = (c) => { const n = c.name.toLowerCase(); return n.startsWith(stem) && (which === 'bg' ? /^\.bg\.[a-z]+$/ : /^\.[a-z]+$/).test(n.slice(stem.length)); };
+    X.customs.filter(mine).concat(X.customs.filter(c => !mine(c))).forEach(c => out.push({ kind: 'custom', label: c.name, meta: mine(c) ? 'custom · matches the ROM' : 'custom folder', src: c.src, name: c.name, path: c.path, cover: which === 'bg' }));
     X.pictures.forEach(p => out.push({ kind: 'picture', label: p.name, meta: 'Pictures on the PSP', src: p.src, name: p.name, path: p.path, cover: true }));
     if (s.icon.kind === 'picture' && which === 'icon' && !X.pictures.some(p => p.name === s.icon.name)) out.push({ kind: 'picture', label: s.icon.name, meta: 'Your own picture', src: s.icon.src, name: s.icon.name, path: s.icon.path, cover: true });
     if (s.bg.kind === 'picture' && which === 'bg' && !X.pictures.some(p => p.name === s.bg.name)) out.push({ kind: 'picture', label: s.bg.name, meta: 'Your own picture', src: s.bg.src, name: s.bg.name, path: s.bg.path, cover: true });
@@ -243,7 +262,7 @@
     out.push({ kind: 'none', label: 'None', meta: which === 'icon' ? (s.bg.kind !== 'none' ? 'hero alone as icon' : 'title card as icon') : 'XMB wave' });
     return out;
   }
-  function isCurrent(g, which, c) { const v = which === 'icon' ? X.state[g.id].icon : X.state[g.id].bg; if (c.kind !== v.kind) return false; if (c.kind === 'picture') return c.name === v.name; if (c.kind === 'scraped' && which === 'icon') return c.src === v.src; return true; }
+  function isCurrent(g, which, c) { const v = which === 'icon' ? X.state[g.id].icon : X.state[g.id].bg; if (c.kind !== v.kind) return false; if (c.kind === 'picture' || c.kind === 'custom') return c.name === v.name; if (c.kind === 'scraped' && which === 'icon') return c.src === v.src; return true; }
 
   // ---------- dialogs ----------
   function dialog(opts) {

@@ -29,10 +29,23 @@ void img_blur(image *im, float sigma);
 void img_saturate(image *im, float s);
 int img_png(const image *im, unsigned char **png, size_t *len);     /* malloc'd */
 
-/* The ICON0 for a game's current choices (title card when there is no art). */
+/* The ICON0 for a game's current choices and layout (g->fit, FIT_*), a
+ * title card when there is no art.  A 144x80 custom PNG goes in as it is. */
 int art_icon0(const game *g, image *out);
-/* The PIC1, or -1 when the game has no background chosen. */
+/* The PIC1, or -1 when the game has no background chosen.  GBAdhoc hero art
+ * (ART_OWN / ART_NET) drops its bottom hint-bar band: the top 228/272 fills
+ * the screen, cropped from the left so the subject stays right.  Anything
+ * else: 480x272 as it is, other sizes covered. */
 int art_pic1(const game *g, image *out);
+int art_pic1_is_hero(const game *g);
+/* A picture the owner supplies (custom folder, PICTURE): readable, decodable
+ * and of a size the PSP can resample.  0 = ok, else why = "is too large...". */
+#define ART_MAX_FILE (8 << 20)
+/* Decoding takes ~7 bytes a pixel (inflate buffer + RGBA) on a heap of
+ * ~10 MB beside the art caches: 1280x720 runs out of memory in PPSSPP,
+ * 960x544 and 800x800 decode. */
+#define ART_MAX_PX (960L * 640L)
+int art_check(const char *path, char *why, size_t cap);
 /* the title card alone */
 int art_title_card(const char *title, int sys, image *out);
 /* a small preview of any picture (picker candidates, PICTURE folder):

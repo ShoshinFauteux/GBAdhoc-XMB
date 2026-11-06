@@ -57,6 +57,12 @@ Join with code.
   of the drawn one.
 - Test flags for screenshots: `--size WxH`, `--max`, `--scale 1.25`.
 
+**PSP hardware fixes (fix/hw-net-ui).**
+
+- **PSP: Wi-Fi connects with any saved connection.** The app tried only connection slot 1; it now tries every saved XMB connection (the one that worked last first), as GBAdhoc does, and opens the network dialog only when none connects. Every network failure shows its step and firmware code (Settings > Network, toasts, log).
+- **PSP: clean rounded shapes on hardware.** Pills, rings, outlines and the boot "XMB" plate no longer show seams or doubled edges: the shape tiles are no longer mirrored with flipped UVs and are sampled with filtering.
+- **PSP: the logo's rainbow underline sits on whole pixel rows** instead of stepping between colours.
+
 ## 0.2.0-beta.1
 
 **Host online room (Windows, experimental).** The Windows app becomes a 2-in-1: besides making

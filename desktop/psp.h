@@ -51,6 +51,8 @@ int psp_remove(const jv *args, sb *out, char *code, char *err, size_t cap);
 
 /* Pictures on the stick (PSP/PICTURE, PICTURE). */
 void psp_pictures(const jv *args, sb *out);
+/* PSP/GAME/GBAdhocXMB/custom: [{name, path, url}] */
+void psp_custom(const jv *args, sb *out);
 /* Folders on the stick worth scanning (for Settings). */
 void psp_dirs(const jv *args, sb *out);
 

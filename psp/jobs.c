@@ -181,7 +181,7 @@ const img_slot *jobs_thumb(const char *path, int sect, int w, int h, int cover)
           g_thumbs[i].cover == cover && strcmp(g_thumbs[i].path, path) == 0)
       {
          g_thumbs[i].used = ++g_clock;
-         return g_thumbs[i].s.state == IMG_READY ? &g_thumbs[i].s : NULL;
+         return g_thumbs[i].s.state == IMG_READY || g_thumbs[i].s.state == IMG_FAIL ? &g_thumbs[i].s : NULL;
       }
    {
       req_t r;
@@ -327,27 +327,93 @@ static void run_request(const req_t *r)
 
 /* ---- network ---- */
 
+/* One attempt: every saved XMB connection, the one that worked last time
+ * first.  beta.2 only ever tried slot 1 (sceNetApctlConnect(1)); a console
+ * whose working profile sits in another slot -- the owner's Go: "GBAdhoc
+ * Relay", made by GBAdhoc's Mystery Gift -- never came online, and the
+ * fallback network dialog then failed too.  This is the bring-up GBAdhoc
+ * itself uses on the same console (mgift_net.c: modules, sceNetInit,
+ * InetInit, ApctlInit, then ApctlConnect(saved slot) and poll for GOT_IP). */
+static int g_net_slot;            /* the slot that last worked, 0 = none */
+static volatile int g_net_attempts;
+static volatile int g_net_busy = 1;   /* an attempt is running or about to (set before the retry flag drops) */
+static char g_net_err[96];
+
+static void net_attempt(void)
+{
+   int slots[10], n, i, rc = NET_E_OFFLINE;
+   char ip[32], name[40];
+   unsigned code = 0;
+   const char *step;
+   if (net_init() != NET_OK)
+   {
+      step = net_last_error(&code);
+      /* with what the firmware had left to load into (a module load that
+       * fails for memory says 0x800208D9 / 0x800200D9) */
+      snprintf(g_net_err, sizeof(g_net_err), "%s failed (0x%08X), %u KB free", step, code,
+               (unsigned)(sceKernelMaxFreeMemSize() / 1024));
+      LOG("net: %s", g_net_err);
+      return;
+   }
+   if (!net_wlan_switch())
+   {
+      snprintf(g_net_err, sizeof(g_net_err), "the Wi-Fi switch is off");
+      return;
+   }
+   n = net_profiles(slots, 10);
+   LOG("net: %d saved connection%s", n, n == 1 ? "" : "s");
+   if (n == 0)
+   {
+      snprintf(g_net_err, sizeof(g_net_err), "no saved connection in the XMB's Network Settings");
+      return;
+   }
+   /* the last good one to the front */
+   for (i = 1; i < n; i++)
+      if (slots[i] == g_net_slot)
+      {
+         int t = slots[0];
+         slots[0] = slots[i];
+         slots[i] = t;
+      }
+   g_net_err[0] = 0;
+   for (i = 0; i < n; i++)
+   {
+      net_profile_name(slots[i], name, sizeof(name));
+      g_net_state = NET_CONNECTING;
+      rc = net_connect(slots[i], NULL);
+      if (rc == NET_OK)
+      {
+         g_net_slot = slots[i];
+         net_info(g_ssid, sizeof(g_ssid), ip, sizeof(ip));
+         if (!g_ssid[0])
+            snprintf(g_ssid, sizeof(g_ssid), "%s", name);
+         g_net_state = NET_ONLINE;
+         g_net_err[0] = 0;
+         LOG("net online: connection %d \"%s\" ssid %s ip %s", slots[i], name, g_ssid, ip);
+         return;
+      }
+      step = net_last_error(&code);
+      LOG("net: connection %d \"%s\": %s 0x%08X", slots[i], name, step, code);
+      /* report the first connection's failure (usually the one meant) */
+      if (!g_net_err[0] || slots[i] == g_net_slot)
+         snprintf(g_net_err, sizeof(g_net_err), "\"%.24s\": %s 0x%08X", name, step, code);
+   }
+   g_net_state = NET_OFF;
+}
+
 static int net_thread(SceSize a, void *b)
 {
    (void)a; (void)b;
    for (;;)
    {
-      if (g_net_state != NET_ONLINE && net_init() == NET_OK && net_wlan_switch())
+      if (g_net_state != NET_ONLINE)
       {
-         char ip[32];
-         g_net_state = NET_CONNECTING;
-         if (net_connect(1, NULL) == NET_OK)
-         {
-            net_info(g_ssid, sizeof(g_ssid), ip, sizeof(ip));
-            g_net_state = NET_ONLINE;
-            LOG("net online %s %s", g_ssid, ip);
-         }
-         else
-         {
+         net_attempt();
+         if (g_net_state != NET_ONLINE)
             g_net_state = NET_OFF;
-            LOG("net connect failed");
-         }
       }
+      g_net_attempts++;
+      g_net_busy = 0;
       /* until asked again; and keep the state honest (an AP that went away) */
       while (!g_net_retry)
       {
@@ -355,6 +421,7 @@ static int net_thread(SceSize a, void *b)
          if (g_net_state == NET_ONLINE && net_state() != NET_ONLINE)
             g_net_state = NET_OFF;
       }
+      g_net_busy = 1;
       g_net_retry = 0;
    }
    return 0;
@@ -365,6 +432,21 @@ int jobs_online(void)
    return g_net_state == NET_ONLINE ? 1 : g_net_state == NET_CONNECTING ? -1 : 0;
 }
 
+int jobs_net_attempts(void)
+{
+   return g_net_attempts;
+}
+
+int jobs_net_busy(void)
+{
+   return g_net_busy || g_net_retry;
+}
+
+void jobs_net_error(char *out, int cap)
+{
+   snprintf(out, (size_t)cap, "%s", g_net_err);
+}
+
 void jobs_net_retry(void)
 {
    if (net_state() == NET_ONLINE)
@@ -372,6 +454,7 @@ void jobs_net_retry(void)
       char ip[32];
       net_info(g_ssid, sizeof(g_ssid), ip, sizeof(ip));
       g_net_state = NET_ONLINE;
+      g_net_err[0] = 0;
       return;
    }
    g_net_retry = 1;
@@ -713,15 +796,15 @@ static int do_make(int gi, int quiet, char *why, size_t whycap)
       if (title_card)
          step(STEP_WARN, "ICON0.PNG (144\xC3\x97" "80 title card: no art for this game yet)");
       else
-         step(STEP_OK, "ICON0.PNG (144\xC3\x97" "80, %s)", g->fit == FIT_TILE ? "tile" : g->fit == FIT_FIT ? "fitted" : "filled");
+         step(STEP_OK, "ICON0.PNG (144\xC3\x97" "80, %s)", g->icon.kind == ART_ENTRY ? "as it is" : fit_name(g->fit));
    }
    /* PIC1 */
    if (g->bg.kind != ART_NONE)
    {
       t0 = now_ms();
-      /* a 480x272 PNG already (GBAdhoc's hero folder, the hero cache) goes
-       * in as it is: no decode, no re-encode */
-      if (g->bg.kind == ART_OWN || g->bg.kind == ART_NET || g->bg.kind == ART_PIC)
+      /* the owner's 480x272 PNG goes in as it is: no decode, no re-encode
+       * (GBAdhoc's hero art is re-framed without its hint-bar band: art_pic1) */
+      if (g->bg.kind == ART_PIC || g->bg.kind == ART_CUSTOM)
       {
          unsigned char *d;
          size_t n;
