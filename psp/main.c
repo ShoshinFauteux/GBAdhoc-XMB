@@ -63,22 +63,51 @@ void ui_request_exit(void)
    g_quit = 1;
 }
 
-/* ---- the firmware's network dialog ---- */
+/* ---- connecting ----
+ *
+ * Settings > Network (offline) first asks the network thread to try every
+ * saved XMB connection directly (jobs.c: the sequence GBAdhoc uses on the
+ * same Go).  Only when none connects does the firmware's network dialog
+ * open, as a way to pick or fix one -- and only once that attempt has
+ * ended, with apctl initialised and disconnected, because the dialog drives
+ * apctl itself.  Every failure is shown with its step and firmware code. */
 
 static pspUtilityNetconfData g_nc;
 static struct pspUtilityNetconfAdhoc g_nc_adhoc;
 static int g_nc_running;
-static double g_nc_check;
+static int g_net_wait;        /* 1 = waiting for the network thread's attempt (2 = then no dialog) */
+static double g_net_wait_t;
 void ui_toast_ext(const char *msg, int tone);
+
+static void net_toast_failed(const char *what)
+{
+   char e[96], m[200];
+   jobs_net_error(e, sizeof(e));
+   snprintf(m, sizeof(m), "%s%s%s", what, e[0] ? ": " : "", e);
+   LOG("%s", m);
+   ui_toast_ext(m, 2);
+}
 
 void ui_netconf_open(void)
 {
+   int rc;
+   unsigned code;
+   char m[200];
    if (g_nc_running)
       return;
-   net_init();
+   if (!net_ready())
+   {
+      /* net_init runs on the network thread; it failed there */
+      const char *step = net_last_error(&code);
+      snprintf(m, sizeof(m), "Network could not start: %s (0x%08X)", step[0] ? step : "not initialised", code);
+      LOG("%s", m);
+      ui_toast_ext(m, 2);
+      return;
+   }
+   net_disconnect();               /* the dialog connects itself; apctl must be idle */
    memset(&g_nc, 0, sizeof(g_nc));
    memset(&g_nc_adhoc, 0, sizeof(g_nc_adhoc));
-   g_nc.base.size = sizeof(g_nc);
+   g_nc.base.size = sizeof(g_nc);  /* 0x44 */
    sceUtilityGetSystemParamInt(PSP_SYSTEMPARAM_ID_INT_LANGUAGE, &g_nc.base.language);
    g_nc.base.buttonSwap = PSP_UTILITY_ACCEPT_CROSS;
    g_nc.base.graphicsThread = 17;
@@ -87,17 +116,65 @@ void ui_netconf_open(void)
    g_nc.base.soundThread = 16;
    g_nc.action = PSP_NETCONF_ACTION_CONNECTAP;
    g_nc.adhocparam = &g_nc_adhoc;
-   if (sceUtilityNetconfInitStart(&g_nc) == 0)
+   rc = sceUtilityNetconfInitStart(&g_nc);
+   if (rc == 0)
    {
       g_nc_running = 1;
       LOG("netconf open");
    }
    else
    {
-      LOG("netconf failed to open");
-      ui_toast_ext("The network dialog could not open. Set up a connection in the XMB's Network Settings.", 2);
+      snprintf(m, sizeof(m), "The network dialog could not open (0x%08X). Free heap %u KB.", (unsigned)rc,
+               (unsigned)(sceKernelMaxFreeMemSize() / 1024));
+      LOG("%s", m);
+      ui_toast_ext(m, 2);
    }
+}
 
+/* Settings > Network, the "Network settings" button */
+void ui_network_connect(void)
+{
+   if (g_nc_running || g_net_wait)
+      return;
+   if (jobs_online() == 1)
+      return;
+   jobs_net_retry();
+   if (jobs_online() == 1)
+   {
+      char s[64], m[100];
+      jobs_net_info(s, sizeof(s));
+      snprintf(m, sizeof(m), "Connected to \"%s\"", s);
+      ui_toast_ext(m, 0);
+      return;
+   }
+   g_net_wait = 1;
+   g_net_wait_t = now_s();
+   ui_toast_ext("Connecting with the XMB's saved Wi-Fi connections\xE2\x80\xA6", 0);
+}
+
+static void net_wait_step(void)
+{
+   if (!g_net_wait || now_s() - g_net_wait_t < 0.3 || jobs_net_busy())
+      return;
+   if (jobs_online() == 1)
+   {
+      char s[64], m[100];
+      jobs_net_info(s, sizeof(s));
+      snprintf(m, sizeof(m), "Connected to \"%s\"", s);
+      ui_toast_ext(m, 0);
+   }
+   else if (g_net_wait == 2)
+      net_toast_failed("Still offline");
+   else
+   {
+      char e[96];
+      jobs_net_error(e, sizeof(e));
+      LOG("direct connect failed: %s; opening the network dialog", e);
+      ui_netconf_open();
+      if (!g_nc_running)
+         net_toast_failed("Could not connect");
+   }
+   g_net_wait = 0;
 }
 
 static void netconf_update(void)
@@ -113,9 +190,14 @@ static void netconf_update(void)
    case PSP_UTILITY_DIALOG_NONE:
    case PSP_UTILITY_DIALOG_FINISHED:
       g_nc_running = 0;
-      LOG("netconf closed, result %d", g_nc.base.result);
-      g_nc_check = now_s() + 6;
+      LOG("netconf closed, result 0x%08X", (unsigned)g_nc.base.result);
+      /* the dialog may have connected: let the thread pick it up (or try again) */
       jobs_net_retry();
+      if (jobs_online() != 1)
+      {
+         g_net_wait = 2;
+         g_net_wait_t = now_s();
+      }
       break;
    default:
       break;
@@ -314,12 +396,7 @@ int main(int argc, char **argv)
       if (!g_nc_running)
          read_pad();
       harness_step();
-      if (g_nc_check > 0 && now_s() > g_nc_check)
-      {
-         g_nc_check = 0;
-         if (jobs_online() != 1)
-            ui_toast_ext("Still offline. Art can be fetched later; entries can be made with the art on the card.", 1);
-      }
+      net_wait_step();
       gfx_frame_begin(g_th->app_bg[2]);
       ui_draw();
       if (g_nc_running)

@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased (hardware fixes)
+
+- **PSP: Wi-Fi connects with any saved connection.** The app tried only connection slot 1; it now tries every saved XMB connection (the one that worked last first), as GBAdhoc does, and opens the network dialog only when none connects. Every network failure shows its step and firmware code (Settings > Network, toasts, log).
+- **PSP: clean rounded shapes on hardware.** Pills, rings, outlines and the boot "XMB" plate no longer show seams or doubled edges: the shape tiles are no longer mirrored with flipped UVs and are sampled with filtering.
+- **PSP: the logo's rainbow underline sits on whole pixel rows** instead of stepping between colours.
+
 ## 0.1.0-beta.2
 
 **Themes.** Both apps now come in four colour themes, chosen in Settings › Theme:

@@ -13,7 +13,7 @@
 #include "jobs.h"
 #include "util.h"
 
-void ui_netconf_open(void);          /* main.c: the firmware's network dialog */
+void ui_network_connect(void);       /* main.c: saved connections, then the firmware's network dialog */
 void ui_request_exit(void);          /* main.c */
 
 /* ------------------------------------------------------------ state ---- */
@@ -992,7 +992,7 @@ static void act_netconf(int a)
    (void)a;
    close_overlay();
    jobs_ack();
-   ui_netconf_open();
+   ui_network_connect();
 }
 
 static void act_close_task(int a)
@@ -1779,7 +1779,13 @@ static int settings_rows(srow *r)
    snprintf(r[6].v, 64, "Network");
    jobs_net_info(ssid, sizeof(ssid));
    if (on == 1) snprintf(r[6].small, 160, "Wi-Fi \"%s\" \xC2\xB7 connected", ssid);
-   else snprintf(r[6].small, 160, "%s", on < 0 ? "connecting\xE2\x80\xA6" : "not connected");
+   else
+   {
+      char ne[96];
+      jobs_net_error(ne, sizeof(ne));
+      if (on < 0) snprintf(r[6].small, 160, "connecting\xE2\x80\xA6");
+      else snprintf(r[6].small, 160, "not connected%s%s", ne[0] ? " \xC2\xB7 " : "", ne);
+   }
    r[6].st = 1;
    snprintf(r[6].stt, 16, "%s", on == 1 ? "Online" : on < 0 ? "Connecting" : "Offline");
    r[6].stc = on == 1 ? C_GOOD_TXT : on < 0 ? C_LOW_TXT : C_BAD_TXT;
@@ -1787,7 +1793,7 @@ static int settings_rows(srow *r)
    if (g_st.found) snprintf(r[7].small, 160, "%s%s%s", g_st.version, g_st.version[0] ? " \xC2\xB7 " : "", g_st.install);
    else snprintf(r[7].small, 160, "not found on the %s", g_st.label);
    snprintf(r[8].v, 64, "About GBAdhoc XMB");
-   snprintf(r[8].small, 160, "version 0.1.0-beta.2");
+   snprintf(r[8].small, 160, "version 0.1.0-beta.2 + hw fixes (net, edges, logo)");
    return NSET;
 }
 
@@ -1863,7 +1869,7 @@ static void key_settings(view *v, int k)
             toast(m, TOAST_OK);
          }
          else
-            ui_netconf_open();
+            ui_network_connect();
          break;
       case 7: toast(g_st.found ? "Entries launch this GBAdhoc; updating it updates every entry" : "Install GBAdhoc in PSP/GAME/GBAdhoc first", g_st.found ? TOAST_OK : TOAST_WARN); break;
       case 8: act_about(0); break;

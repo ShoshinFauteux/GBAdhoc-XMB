@@ -53,6 +53,15 @@ int net_wlan_switch(void);
  * (The UI may instead run sceUtilityNetconf and then call net_state().) */
 int net_connect(int config, volatile int *cancel);
 int net_state(void);                 /* NET_OFF / NET_CONNECTING / NET_ONLINE */
+/* 1 once net_init() has completed (the network dialog needs it) */
+int net_ready(void);
+/* The last failing step ("sceNetApctlConnect", ...) and its firmware code
+ * (or apctl state); "" when nothing failed yet. */
+const char *net_last_error(unsigned *code);
+/* The XMB's saved connections (slot numbers, 1-based, gaps allowed) and a
+ * connection's display name. */
+int net_profiles(int *slots, int max);
+int net_profile_name(int slot, char *out, size_t cap);
 /* The connection's name (SSID or profile name) and IP, "" when offline. */
 void net_info(char *ssid, size_t ssid_cap, char *ip, size_t ip_cap);
 void net_disconnect(void);

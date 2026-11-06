@@ -73,6 +73,12 @@ void jobs_frame_end(void);        /* free retired buffers (UI thread) */
 int jobs_online(void);
 void jobs_net_retry(void);
 void jobs_net_info(char *ssid, int cap);
+/* attempts the network thread has finished (a request waits for it to move) */
+int jobs_net_attempts(void);
+/* 1 while an attempt runs or a retry waits to start */
+int jobs_net_busy(void);
+/* why the last attempt failed, with the firmware code ("" when online) */
+void jobs_net_error(char *out, int cap);
 
 /* lock around reading g_task text from the UI */
 void task_lock(void);
