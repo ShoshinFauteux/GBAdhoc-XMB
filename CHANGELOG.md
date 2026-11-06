@@ -16,19 +16,30 @@ Join with code.
   the directory is down; the tab then puts it first. A LAN invite code is shown for PSPs at home.
 - **Direct or via host.** Two PSPs that join this PC are introduced and hole-punch a direct path;
   this PC forwards only when that fails. Each player's row says *Direct* or *Via host*.
-- **The same relay core**, vendored again from GBAdhoc `24e3e2dd` (`shared/relay/README.md`):
+- **The same relay core**, vendored again from GBAdhoc `092a4879` (`shared/relay/README.md`):
   the directory, the home code, `relay_dirclient.c` and `invite_code.h`.
+- **What it costs the shared server:** about 3.8 KB of UDP payload per two-player room-hour by
+  room code (measured: 3,480 B an hour to stay listed, 176 B to register, 105 B per lookup),
+  about 7 KB with IP/UDP headers. A room joined only by invite code costs the server just its
+  registration.
 - **Tests** (loopback only): the desktop-host + directory NAT model and the invite-code tests
   (every single typo and swap refused), fuzzing over the new messages, the Online tab's codes on
   fixtures, and a discovery run of the real host code: it registers with an in-process directory
   on 127.0.0.1, one console joins by the room code, the other by the invite code, and Stop frees
-  the code.
+  the code. In PPSSPP, two GBAdhoc instances joined a desktop-mode host by invite code alone,
+  went direct, and completed an Emerald Union Room trade; then again with one PSP by room code
+  (one LOOKUP at a loopback directory, 393 B there for the whole session) and the other by invite
+  code (GBAdhoc `docs/ONLINE-TUNNEL.md`). The
+  fuzzer no longer checks a timer's PEER LEFT as a reply (a false "amplification" on one seed).
 - **Owner decisions (2026-11-05):** both codes, one PSP Join box (room code first, invite code as
   the backup); codes never expire (an invite is valid while the address and port stay the same);
   the public address hidden until *Show* (an invite code encodes it, so that is cosmetic for
   anyone holding the code); no QR code; relay via this PC when the punch fails.
 - **Both players join.** On the PSP both press *Join with code*; the first in hosts the session
-  (GBAdhoc `claude/online-desktophost`).
+  (GBAdhoc `claude/online-desktophost`). The PSP's online module checks the code (4 letters, or an
+  invite's check) before it opens a socket, so the PSP app's boot memory is unchanged.
+- **Vendored invite decoder** is GBAdhoc's 32-bit one; `test_invite` checks it against the first
+  decoder on 4 M inputs.
 
 ## 0.2.0-beta.1
 

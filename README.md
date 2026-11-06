@@ -255,8 +255,10 @@ forwards for them), the ping from each PSP to this PC, the loss and packets per 
 1. On the PC, open **Online** and click **Host online room**. Windows may ask whether GBAdhoc
    XMB may use the network: allow it on the network you are on.
 2. On each PSP (a GBAdhoc build with online play, Settings › Online play on): Wireless › Online ›
-   **Join with code**, and type either code. One PSP creates the room with it, the other joins.
-   PSPs on this network do the same.
+   **Join with code**, and type either code (four letters is a room code, eight or eleven
+   characters an invite; the first blank ends the code). Both players join: the first PSP in
+   hosts the link session, the second follows its link mode. PSPs on this network do the same.
+   A mistyped invite is refused on the PSP before it sends anything.
 3. The two PSPs try to reach each other directly (a hole punch); when their routers do not
    allow it, this PC forwards for them.
 

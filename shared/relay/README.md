@@ -13,7 +13,8 @@ enforce the same rules.
 | `client/transport_relay.c/.h`, `client/netdrv.c/.h`, `client/netdrv_wire.h` | `netdrv/` |
 | `tests/test_relay_nat.c`, `tests/test_relay_desktop.c`, `tests/test_invite.c`, `tests/fuzz_relay.c`, `tests/relay_client.c` | `tools/relay/` |
 
-Upstream commit: `7b44d9a5` (branch `claude/online-desktophost`, 2026-11-05: the first PSP into the
+Upstream commit: `092a4879` (branch `claude/online-desktophost`, 2026-11-05: the 32-bit invite decoder;
+before it `7b44d9a5`: the first PSP into the
 home room hosts it; before it `24e3e2dd`: the directory -- REGISTER / LOOKUP --, the home code and
 invite codes; earlier `cb6eb47f`). The protocol and its
 security rules are specified in GBAdhoc's `docs/ONLINE-TUNNEL.md`, sections 5 and 6 and
