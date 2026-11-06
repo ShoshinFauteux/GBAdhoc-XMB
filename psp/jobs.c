@@ -348,7 +348,10 @@ static void net_attempt(void)
    if (net_init() != NET_OK)
    {
       step = net_last_error(&code);
-      snprintf(g_net_err, sizeof(g_net_err), "%s failed (0x%08X)", step, code);
+      /* with what the firmware had left to load into (a module load that
+       * fails for memory says 0x800208D9 / 0x800200D9) */
+      snprintf(g_net_err, sizeof(g_net_err), "%s failed (0x%08X), %u KB free", step, code,
+               (unsigned)(sceKernelMaxFreeMemSize() / 1024));
       LOG("net: %s", g_net_err);
       return;
    }

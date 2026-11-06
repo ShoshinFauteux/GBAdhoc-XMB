@@ -31,7 +31,15 @@
 
 PSP_MODULE_INFO("GBAdhocXMB", 0, 1, 0);
 PSP_MAIN_THREAD_ATTR(THREAD_ATTR_USER | THREAD_ATTR_VFPU);
-PSP_HEAP_SIZE_KB(-3072);       /* leave room for the net modules and the network dialog */
+/* The heap is "all but THRESHOLD": the net modules (sceUtilityLoadNetModule),
+ * sceNetInit's pool, the network dialog and every thread stack are allocated
+ * from what the heap leaves.  NOTE: pspdev's libcglue reads only the SIGN of
+ * a negative PSP_HEAP_SIZE_KB -- the amount kept back is
+ * PSP_HEAP_THRESHOLD_SIZE_KB, default 512 KB (_sbrk: MaxFreeMemSize -
+ * threshold).  beta.2 said -3072 and so kept 512 KB: 764 KB free at main(),
+ * and on the Go the INET module load failed with 0x800208D9 (no memory). */
+PSP_HEAP_SIZE_KB(-1);
+PSP_HEAP_THRESHOLD_SIZE_KB(4096);
 
 void ui_init(void);
 void ui_draw(void);
@@ -372,6 +380,8 @@ int main(int argc, char **argv)
       snprintf(g_st.app_dir, sizeof(g_st.app_dir), "ms0:/PSP/GAME/GBAdhocXMB");
    log_open(g_st.app_dir);
    LOG("GBAdhoc XMB start, app %s", g_st.app_dir);
+   LOG("mem at start: max free block %u KB, total free %u KB", (unsigned)(sceKernelMaxFreeMemSize() / 1024),
+       (unsigned)(sceKernelTotalFreeMemSize() / 1024));
    path_join(ini, sizeof(ini), g_st.app_dir, "xmbapp-harness.ini");
    if (read_all(ini, &buf, &n) == 0)
    {
