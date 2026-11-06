@@ -5,6 +5,7 @@
   'use strict';
   const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   const SHARED = 'relay.rayquaza.ca';
+  const FAQ = 'https://github.com/ShoshinFauteux/GBAdhoc-XMB#faq-and-troubleshooting';   // the troubleshooting lives only in the README's FAQ
   const NO_FILES = 'No game files pass through this PC: only link traffic, the same as between two PSPs.';
 
   function ports(st) { const p = (st && st.port) || 27420; return `UDP ${p}-${p + 1}`; }
@@ -203,13 +204,7 @@
           <div class="srow"><div class="t"><b>Open the ports with UPnP</b><small class="p">Asks your router to forward them to this PC while you host, and removes them when you stop</small></div><span class="tog ${view.upnp !== false ? 'on' : ''}" id="on-upnp" ${running ? 'aria-disabled="true"' : ''}></span></div></div>
           <div class="srow"><div class="t"><b>Host when GBAdhoc XMB starts</b><small class="p">Opens the room as soon as the app opens, with the settings above. Off by default.</small></div><span class="tog ${view.autoHost ? 'on' : ''}" id="on-auto"></span></div>
           <div class="srow"><div class="t"><b>List the room in the directory</b><small class="p">Registers "this room code is at this PC" on ${esc(SHARED)} so a four-letter code works from anywhere. Off, only the invite code works. The directory stores the code and this PC's address while you host; no names, no game traffic. Default on (the owner may change it).</small></div><span class="tog ${view.directory !== false ? 'on' : ''}" id="on-dir" ${running ? 'aria-disabled="true"' : ''}></span></div>
-        <div class="sec"><h3>If a friend can't join</h3>
-          <div class="srow"><div class="t"><b>"Server did not answer" on their PSP</b><small class="p">Check that this tab says Ready, that Windows Firewall allows GBAdhoc XMB, and that the code is typed exactly. Still failing? Send the invite code: it needs no server.</small></div></div>
-          <div class="srow"><div class="t"><b>On a phone hotspot and it won't connect</b><small class="p">Turn the phone's Wi-Fi off. When a phone is also connected to Wi-Fi, many phones (Samsung and others) share that Wi-Fi instead of mobile data.</small></div></div>
-          <div class="srow"><div class="t"><b>The games fell out of step (desynced)</b><small class="p">Both players need the same GBAdhoc build and <span class="mono">gba_bios.bin</span> in GBAdhoc's folder, PPSSPP players too.</small></div></div>
-          <div class="srow"><div class="t"><b>"Via host", not "Direct"</b><small class="p">That is fine: the two networks would not let the PSPs reach each other, so this PC passes the traffic along. It adds a little ping. Nothing needs fixing.</small></div></div>
-          <div class="srow"><div class="t"><b>In the same house as this PC</b><small class="p">The room code handles it by itself. With an invite code, use the <i>same house</i> code under it: many routers do not loop their public address back.</small></div></div>
-          <div class="srow"><div class="t"><b>Can a PSP host?</b><small class="p">Yes, with GBAdhoc's Create room, but its router must forward UDP 27500 to that PSP. Letting a PC host is easier: GBAdhoc XMB opens its own ports.</small></div></div></div>
+        <div class="sec"><div class="srow"><div class="t"><b>Trouble connecting?</b><small class="p">Hotspots, desyncs, routers, "Via host": the answers are in the FAQ.</small></div><button class="b sm" data-faq id="on-faq">Open the FAQ</button></div></div>
         <div class="sec"><h3>Before you host</h3>
           <div class="srow"><div class="t"><b>No game files</b><small class="p" id="on-nofiles">${esc(NO_FILES)}</small></div></div>
           <div class="srow"><div class="t"><b>Your address</b><small class="p">A guest on the internet connects to this PC, so they see its public IP address (with the shared relay, nobody sees anyone's).</small></div></div>
@@ -223,5 +218,5 @@
   // the address the Copy button of the public row copies (kept out of the page until asked)
   function publicAddr(st) { const up = (st && st.upnp) || {}, rel = (st && st.relay) || {}; const pub = rel.state === 'ok' && rel.pub ? rel.pub : up.wan; return pub ? relayAddr(pub, st) : ''; }
 
-  root.ONLINE = { describe, shareText, bestCode, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, codesHTML, conflictHTML, NO_FILES, SHARED };
+  root.ONLINE = { FAQ, describe, shareText, bestCode, publicAddr, html, statusHTML, logHTML, checkHTML, roomsHTML, codesHTML, conflictHTML, NO_FILES, SHARED };
 })(typeof window !== 'undefined' ? window : globalThis);

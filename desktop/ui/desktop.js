@@ -523,6 +523,7 @@
     if (c) { navigator.clipboard.writeText(c.dataset.copy).then(() => toast('Copied ' + (c.dataset.copylabel || c.dataset.copy) + (c.dataset.copylabel ? ': paste it in your chat' : ''), 'ok'), () => toast('Could not copy', 'bad')); return; }
     if (e.target.closest('[data-copypub]')) { const v = O.publicAddr(onSt); if (v) navigator.clipboard.writeText(v).then(() => toast('Copied the public address', 'ok'), () => toast('Could not copy', 'bad')); return; }
     if (e.target.closest('[data-showpub]')) { onView.showIp = !onView.showIp; paintOnline(); return; }
+    if (e.target.closest('[data-faq]')) { H.call('openUrl', { url: O.FAQ }); return; }
     const hp = e.target.closest('[data-hostport]'); if (hp) { startHosting(parseInt(hp.dataset.hostport, 10)); return; }
     if (e.target.closest('[data-useext]')) { onView.useExternal = true; render(); return; }
     if (e.target.closest('[data-unuse]')) { onView.useExternal = false; render(); return; }

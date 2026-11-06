@@ -51,8 +51,9 @@ Join with code.
 - **When the router blocks hosting, the tab names the fix:** turn on UPnP (or Port forwarding in
   a provider's phone app), or forward the ports to this PC's address, then Stop and Host again.
   Otherwise, let the friend host, because joining needs nothing from a router.
-- **If a friend can't join:** a new section covering the same build and BIOS, phone hotspots
-  that share Wi-Fi, the same-house code, and a PSP host needing UDP 27500.
+- **Trouble connecting?** An *Open the FAQ* button opens the README's FAQ and troubleshooting,
+  which is the only place the answers are kept (phone hotspots, desyncs, routers, Via host,
+  same house, a PSP host, port in use).
 - **Host when GBAdhoc XMB starts** (Settings on the Online tab, off by default), remembered with
   the other online settings.
 - Tests: the Online tab's new states (`online_ui.js`, 125 checks). `test_online directory` runs
@@ -68,7 +69,7 @@ selectable. `tools/test_themes.py` covers five themes.
 
 **README:** shown in Mono, with a neutral outlined "XMB" mark and neutral badges. Every image
 is recaptured: the PSP app in PPSSPP, the Windows app with its own capture, and the hero with
-the real PSP model. A *Play online* section adds steps and troubleshooting.
+the real PSP model. A short *Play online* section has the host and join steps; all troubleshooting is in the FAQ at the end.
 
 **Windows app fixes (owner review of 0.2.0-beta.1).**
 

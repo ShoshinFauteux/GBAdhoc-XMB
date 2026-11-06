@@ -122,9 +122,7 @@ for (const [name, o, title, shared] of cases) {
   check('blocked: the fix is named', /The fix: turn on UPnP/.test(none.text) && /forward UDP 27420-27421 to 192\.168\.1\.20/.test(none.text), none.text);
   check('blocked: letting the friend host is offered', /let your friend host/.test(O.html(S({ verdict: 'lan-only', upnp: { state: 'none', wan: '' } }), null, {})));
   const h = O.html(S({ running: false }), null, {});
-  check('troubleshooting: same build and BIOS', /same GBAdhoc build/.test(h) && /gba_bios\.bin/.test(h));
-  check('troubleshooting: phone hotspot on Wi-Fi', /Turn the phone's Wi-Fi off/.test(h));
-  check('troubleshooting: a PSP hosting needs UDP 27500', /UDP 27500/.test(h));
+  check('troubleshooting: one button to the README FAQ, no copy of it', h.includes('data-faq') && /#faq-and-troubleshooting$/.test(O.FAQ) && !/Turn the phone's Wi-Fi off|UDP 27500/.test(h));
   check('settings: host when the app starts, off by default', /Host when GBAdhoc XMB starts/.test(h) && !/id="on-auto"[^>]*class="tog on"/.test(h) && h.includes('<span class="tog " id="on-auto">'));
   check('settings: host when the app starts, on', O.html(S({ running: false }), null, { autoHost: true }).includes('<span class="tog on" id="on-auto">'));
 }
